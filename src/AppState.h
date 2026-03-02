@@ -7,6 +7,7 @@
 #pragma once
 
 #include "AppStatus.h"
+#include <Game/Game.h>
 #include <Util/MemoryArena.h>
 #include <Util/Random.h>
 
@@ -17,6 +18,8 @@ struct AppState {
     MemoryArena systemArena;
 
     Random* cosmeticRandom; // Appropriate for when you need a random number and don't care if it's consistent!
+    
+    OwnPtr<Game> game;
 
     float rawDeltaTime;
     float speedMultiplier;

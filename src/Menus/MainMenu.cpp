@@ -5,6 +5,7 @@
  */
 
 #include "MainMenu.h"
+#include "AppState.h"
 #include <Debug/Debug.h>
 #include <Gfx/Renderer.h>
 #include <IO/SavedGames.h>
@@ -33,10 +34,7 @@ AppStatus updateAndRenderMainMenu(float /*deltaTime*/)
     String exitText = getText("button_exit"_s);
 
     if (panel.addTextButton(newGameText)) {
-        
-        // FIXME: Start new game!
-        VERIFY_NOT_REACHED();
-
+        AppState::the().game = Game::create();
         result = AppStatus::Game;
     }
     if (panel.addTextButton(loadText)) {

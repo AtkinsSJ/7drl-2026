@@ -192,9 +192,7 @@ int main(int argc, char* argv[])
                 } break;
 
                 case AppStatus::Game: {
-                    // FIXME: Update and render game!
-                    // newAppStatus = updateAndRenderGame(app_state.gameState, app_state.deltaTime);
-                    VERIFY_NOT_REACHED();
+                    newAppStatus = app_state.game->update_and_render(app_state.deltaTime);
                 } break;
 
                 case AppStatus::Quit:
@@ -205,10 +203,8 @@ int main(int argc, char* argv[])
 
                 if (newAppStatus != app_state.appStatus) {
                     // Clean-up for previous state
-                    if (app_state.appStatus == AppStatus::Game) {
-                        // FIXME: Do it!
-                        VERIFY_NOT_REACHED();
-                    }
+                    if (app_state.appStatus == AppStatus::Game)
+                        app_state.game.clear();
 
                     app_state.appStatus = newAppStatus;
                     UI::closeAllWindows();
