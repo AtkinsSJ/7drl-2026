@@ -1,0 +1,4 @@
+# cursor definitions
+# name | image file | x and y of the "hot spot"
+
+default  default.png 0 0
