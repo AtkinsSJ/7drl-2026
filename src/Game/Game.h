@@ -8,6 +8,7 @@
 
 #include "AppStatus.h"
 #include <Game/Map.h>
+#include <Game/Player.h>
 #include <Gfx/Camera.h>
 #include <Util/OwnPtr.h>
 
@@ -21,4 +22,5 @@ private:
     explicit Game(u32 width, u32 height);
     MemoryArena m_arena;
     Map m_map;
+    Player* m_player;
 };
