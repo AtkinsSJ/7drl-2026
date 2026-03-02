@@ -24,7 +24,15 @@ Game::Game(u32 width, u32 height)
     // Generate the most amazing map you've ever experienced.
     for (auto y = 0; y < height; ++y) {
         for (auto x = 0; x < width; ++x) {
-            m_map.tile_at(x, y).set_terrain(random->random_below(100) < 20 ? Terrain::Water : Terrain::Grass);
+            auto number = random->random_below(100);
+            auto terrain = [number] {
+                if (number < 20)
+                    return Terrain::Water;
+                if (number < 30)
+                    return Terrain::Sand;
+                return Terrain::Grass;
+            }();
+            m_map.tile_at(x, y).set_terrain(terrain);
         }
     }
 

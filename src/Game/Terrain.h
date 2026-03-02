@@ -12,6 +12,7 @@
 enum class Terrain : u8 {
     Water,
     Grass,
+    Sand,
     COUNT,
 };
 

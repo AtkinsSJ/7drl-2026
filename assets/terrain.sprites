@@ -11,3 +11,10 @@ sprite 0 1
 sprite 1 1
 sprite 2 1
 sprite 3 1
+
+:SpriteGroup t_sand terrain.png 16x16
+border 1 1
+sprite 0 2
+sprite 1 2
+sprite 2 2
+sprite 3 2

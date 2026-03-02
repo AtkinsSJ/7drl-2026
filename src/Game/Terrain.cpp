@@ -12,6 +12,7 @@ static EnumMap<Terrain, TerrainDef>& get_terrain_defs()
     static EnumMap<Terrain, TerrainDef> terrain_defs {
         { "Water"_s, "t_water"_s },
         { "Grass"_s, "t_grass"_s },
+        { "Sand"_s, "t_sand"_s },
     };
 
     return terrain_defs;
