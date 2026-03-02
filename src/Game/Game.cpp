@@ -40,7 +40,8 @@ AppStatus Game::update_and_render(float delta_time)
         if (player_moved)
             m_map->update();
 
-        the_renderer().world_camera().set_position(v2(m_player->x(), m_player->y()));
+        the_renderer().world_camera().set_position(v2(m_player->x() + 0.5f, m_player->y() + 0.5f));
+        the_renderer().world_camera().snap_to_rectangle({ 0, 0, static_cast<s32>(m_map->width()), static_cast<s32>(m_map->height()) });
     }
 
     // Render
