@@ -21,6 +21,6 @@ public:
 private:
     explicit Game(u32 width, u32 height);
     MemoryArena m_arena;
-    Map m_map;
+    OwnPtr<Map> m_map;
     Player* m_player;
 };

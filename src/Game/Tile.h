@@ -19,8 +19,10 @@ public:
     }
 
     void set_terrain(Terrain);
+    void set_terrain_raw(Badge<Map>, Terrain);
     Terrain terrain() const { return m_terrain; }
     Sprite& terrain_sprite() const;
+    void fetch_sprite();
 
     Actor* actor() const { return m_actor; }
     void set_actor(Actor* actor)

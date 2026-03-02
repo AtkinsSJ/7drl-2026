@@ -12,7 +12,7 @@
 
 class Map {
 public:
-    Map(u32 width, u32 height, MemoryArena&);
+    static NonnullOwnPtr<Map> generate_surface(u32 width, u32 height, Random&, MemoryArena&);
     ~Map();
 
     u32 width() const { return m_tiles.w; }
@@ -27,6 +27,7 @@ public:
     void render(float delta_time) const;
 
 private:
+    Map(u32 width, u32 height, MemoryArena&);
     Array2<Tile> m_tiles;
     ChunkedArray<NonnullOwnPtr<Actor>> m_actors;
 };

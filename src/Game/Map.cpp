@@ -7,6 +7,48 @@
 #include "Map.h"
 #include <Gfx/Renderer.h>
 #include <Util/MemoryArena.h>
+#include <Util/Random.h>
+
+NonnullOwnPtr<Map> Map::generate_surface(u32 width, u32 height, Random& random, MemoryArena& arena)
+{
+    auto map = adopt_own(*new Map(width, height, arena));
+
+    // General idea:
+    // Sea to the south, a sandy beach, and then grass/woodland.
+
+    // Grass default
+    for (auto y = 0; y < height; ++y) {
+        for (auto x = 0; x < width; ++x) {
+            map->tile_at(x, y).set_terrain_raw({}, Terrain::Grass);
+        }
+    }
+
+    // Coast
+    auto coastline_water = temp_arena().allocate_array<float>(width, true);
+    auto coastline_sand = temp_arena().allocate_array<float>(width, true);
+    random.fill_with_noise(coastline_water, 10, false);
+    random.fill_with_noise(coastline_sand, 12, false);
+
+    for (auto x = 0; x < width; ++x) {
+        auto column_coastline_level = static_cast<int>(10 + (coastline_water[x] * 12));
+        auto column_sand_level = static_cast<int>(column_coastline_level + (coastline_sand[x] * 8));
+
+        for (auto y = height - column_sand_level; y < height - column_coastline_level; ++y)
+            map->tile_at(x, y).set_terrain_raw({}, Terrain::Sand);
+
+        for (auto y = height - column_coastline_level; y < height; ++y)
+            map->tile_at(x, y).set_terrain_raw({}, Terrain::Water);
+    }
+
+    // Initialize all sprites
+    for (auto y = 0; y < height; ++y) {
+        for (auto x = 0; x < width; ++x) {
+            map->tile_at(x, y).fetch_sprite();
+        }
+    }
+
+    return map;
+}
 
 Map::Map(u32 width, u32 height, MemoryArena& arena)
     : m_tiles(arena.allocate_array_2d<Tile>(width, height))
