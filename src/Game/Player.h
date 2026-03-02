@@ -11,7 +11,7 @@
 
 class Player final : public Actor {
 public:
-    Player(u32 x, u32 y)
+    Player(s32 x, s32 y)
         : Actor(x, y)
         , m_sprite("player"_sv, 0)
     {
