@@ -38,7 +38,7 @@ public:
 
 class SpriteRef {
 public:
-    explicit SpriteRef(StringView group_name, u32 sprite_index)
+    SpriteRef(StringView group_name, u32 sprite_index)
         : m_sprite_group_name(group_name)
         , m_sprite_index(sprite_index)
     {

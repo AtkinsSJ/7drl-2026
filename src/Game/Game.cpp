@@ -18,8 +18,11 @@ NonnullOwnPtr<Game> Game::create()
 Game::Game(u32 width, u32 height)
     : m_arena("Game"_s)
 {
+    // 32 chosen because we're unlikely to have many items in a single tile, but want to avoid chunking too.
+    initChunkPool(&m_item_chunk_pool, &m_arena, 32);
+
     auto random = adopt_own(*Random::create());
-    m_map = Map::generate_surface(width, height, *random, m_arena);
+    m_map = Map::generate_surface(width, height, *random, m_arena, m_item_chunk_pool);
 
     // Pop a player somewhere
     auto player = adopt_own(*new Player(width / 2, height / 2));

@@ -12,7 +12,7 @@
 
 class Map {
 public:
-    static NonnullOwnPtr<Map> generate_surface(u32 width, u32 height, Random&, MemoryArena&);
+    static NonnullOwnPtr<Map> generate_surface(u32 width, u32 height, Random&, MemoryArena&, ArrayChunkPool<NonnullOwnPtr<Item>>&);
     ~Map();
 
     u32 width() const { return m_tiles.w; }
@@ -27,7 +27,7 @@ public:
     void render(float delta_time) const;
 
 private:
-    Map(u32 width, u32 height, MemoryArena&);
+    Map(u32 width, u32 height, MemoryArena&, ArrayChunkPool<NonnullOwnPtr<Item>>&);
     Array2<Tile> m_tiles;
     ChunkedArray<NonnullOwnPtr<Actor>> m_actors;
 };

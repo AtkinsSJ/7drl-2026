@@ -1,0 +1,7 @@
+:SpriteGroup i_stick items.png 16x16
+sprite 0 0
+sprite 1 0
+
+:SpriteGroup i_rock items.png 16x16
+sprite 0 1
+sprite 1 1

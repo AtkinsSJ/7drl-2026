@@ -18,9 +18,13 @@ public:
 
     AppStatus update_and_render(float delta_time);
 
+    ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool() { return m_item_chunk_pool; }
+
 private:
     explicit Game(u32 width, u32 height);
     MemoryArena m_arena;
+    ArrayChunkPool<NonnullOwnPtr<Item>> m_item_chunk_pool;
+
     OwnPtr<Map> m_map;
     Player* m_player;
 };

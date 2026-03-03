@@ -6,8 +6,13 @@
 
 #pragma once
 
+#include <Util/Basic.h>
+
 class Actor;
 class Game;
+class Item;
 class Map;
 class Tile;
 class Player;
+
+using ItemType = u32;

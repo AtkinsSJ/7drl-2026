@@ -31,6 +31,7 @@
 #include <Assets/AssetManager.h>
 #include <Debug/Console.h>
 #include <Debug/DebugAssetLoader.h>
+#include <Game/ItemCatalogue.h>
 #include <Gfx/AssetLoader.h>
 #include <Gfx/Renderer.h>
 #include <IO/SavedGames.h>
@@ -128,6 +129,9 @@ int main(int argc, char* argv[])
     assets.register_asset_loader(adopt_own(*new Gfx::AssetLoader));
     assets.register_asset_loader(adopt_own(*new UI::AssetLoader));
     assets.register_asset_loader(adopt_own(*new DebugAssetLoader));
+
+    assets.register_asset_loader(ItemCatalogue::make_loader());
+    assets.register_listener(&ItemCatalogue::the());
 
     assets.scan_assets();
     assets.load_assets();

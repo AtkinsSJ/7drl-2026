@@ -13,10 +13,7 @@
 class Tile {
 public:
     Tile() = default;
-    explicit Tile(Terrain terrain)
-    {
-        set_terrain(terrain);
-    }
+    Tile(Terrain, ArrayChunkPool<NonnullOwnPtr<Item>>&);
 
     void set_terrain(Terrain);
     void set_terrain_raw(Badge<Map>, Terrain);
@@ -31,8 +28,12 @@ public:
         m_actor = actor;
     }
 
+    ChunkedArray<NonnullOwnPtr<Item>> const& items() const { return m_items; }
+    Item& add_item(ItemType);
+
 private:
     Terrain m_terrain;
     SpriteRef m_terrain_sprite;
     Actor* m_actor;
+    ChunkedArray<NonnullOwnPtr<Item>> m_items;
 };

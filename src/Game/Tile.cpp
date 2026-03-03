@@ -6,6 +6,15 @@
 
 #include "Tile.h"
 #include "AppState.h"
+#include <Game/Item.h>
+
+Tile::Tile(Terrain terrain, ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool)
+    : m_terrain(terrain)
+    , m_terrain_sprite(get_terrain_def(terrain).sprite_name, AppState::the().cosmeticRandom->next())
+    , m_actor(nullptr)
+{
+    initChunkedArray(&m_items, &item_chunk_pool);
+}
 
 void Tile::set_terrain(Terrain terrain)
 {
@@ -28,4 +37,10 @@ Sprite& Tile::terrain_sprite() const
 void Tile::fetch_sprite()
 {
     m_terrain_sprite = SpriteRef { get_terrain_def(m_terrain).sprite_name, AppState::the().cosmeticRandom->next() };
+}
+
+Item& Tile::add_item(ItemType item_type)
+{
+    auto* item = m_items.append(adopt_own(*new Item(item_type)));
+    return **item;
 }
