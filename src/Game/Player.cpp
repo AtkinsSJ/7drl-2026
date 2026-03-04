@@ -22,6 +22,8 @@ void Player::try_act_from_user_input()
 
     if (keyJustPressed(SDLK_p))
         GUI::show_pick_up_window();
+    else if (keyJustPressed(SDLK_d))
+        GUI::show_drop_window();
     else if (keyJustPressed(SDLK_KP_1))
         m_has_acted = try_move(Direction::SW);
     else if (keyJustPressed(SDLK_KP_2))

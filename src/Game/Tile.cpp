@@ -56,3 +56,18 @@ Item& Tile::add_item(ItemType item_type)
 
     return **m_items.append(adopt_own(*new Item(item_type)));
 }
+
+void Tile::add_item(NonnullOwnPtr<Item> item)
+{
+    // FIXME: Copy-paste from Actor::give_item! Make some kind of class for this.
+    // Try to add it to existing item stacks
+    for (auto it = m_items.iterate(); it.hasNext(); it.next()) {
+        auto& existing_item = *it.get();
+        auto leftover = existing_item.try_add_to_stack(move(item));
+        if (leftover == nullptr)
+            return;
+        item = leftover.release_nonnull();
+    }
+    // Append any remainder
+    m_items.append(move(item));
+}

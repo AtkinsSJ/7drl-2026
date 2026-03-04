@@ -32,6 +32,7 @@ public:
     s32 y() const { return m_y; }
 
     ChunkedArray<NonnullOwnPtr<Item>> const& inventory() const { return m_inventory; }
+    ChunkedArray<NonnullOwnPtr<Item>>& inventory() { return m_inventory; }
     void give_item(NonnullOwnPtr<Item>);
 
     void set_map(Map*);

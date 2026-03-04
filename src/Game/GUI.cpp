@@ -12,6 +12,10 @@
 
 namespace GUI {
 
+// Ew, globals. But it's the easiest way to make persistence work in windows until I rework that.
+static u32 s_selected_item_index = 0;
+static u32 s_item_quantity = 1;
+
 static void inventory_window_proc(UI::WindowContext* context, void*)
 {
     auto& game = AppState::the().game;
@@ -71,8 +75,6 @@ void toggle_help()
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_help"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, help_window_proc);
 }
 
-static u32 s_selected_item_index = 0;
-
 static void pick_up_window_proc(UI::WindowContext* context, void*)
 {
     auto& game = AppState::the().game;
@@ -116,6 +118,8 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
     }
 
     UI::Panel& ui = context->windowPanel;
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Up/Down to select an item. Enter to pick it up. Escape to close this."_sv);
     for (auto it = tile.items().iterate(); it.hasNext(); it.next()) {
         ui.startNewLine(HAlign::Left);
         if (it.getIndex() == s_selected_item_index) {
@@ -142,9 +146,79 @@ void show_pick_up_window()
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_pick_up_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, pick_up_window_proc);
 }
 
+static void drop_window_proc(UI::WindowContext* context, void*)
+{
+    auto& game = AppState::the().game;
+    if (!game || !game->player() || !game->map()) {
+        logWarn("Closing drop items window because no game/player/map found."_s);
+        UI::closeWindow(drop_window_proc);
+        return;
+    }
+    auto& player = *game->player();
+    auto& map = *game->map();
+    auto& tile = map.tile_at(player.x(), player.y());
+
+    if (player.inventory().is_empty()) {
+        UI::closeWindow(drop_window_proc);
+        return;
+    }
+
+    // We're treating this list of labels like a menu. [Up] and [Down] select the item, and [Enter] selects it.
+    if (keyJustPressed(SDLK_ESCAPE)) {
+        UI::closeWindow(drop_window_proc);
+        return;
+    }
+
+    if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
+        s_selected_item_index--;
+    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < tile.items().count - 1)
+        s_selected_item_index++;
+    if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
+        auto item = player.inventory().take_index(s_selected_item_index, true);
+        UI::Toast::show(getText("msg_dropped_item"_s, { item->describe() }));
+        map.tile_at(player.x(), player.y()).add_item(move(item));
+        player.set_has_acted(true);
+
+        if (player.inventory().is_empty()) {
+            UI::closeWindow(drop_window_proc);
+            return;
+        }
+
+        if (s_selected_item_index >= player.inventory().count)
+            s_selected_item_index = player.inventory().count - 1;
+    }
+
+    UI::Panel& ui = context->windowPanel;
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Up/Down to select an item. Enter to drop it. Escape to close this."_sv);
+    for (auto it = player.inventory().iterate(); it.hasNext(); it.next()) {
+        ui.startNewLine(HAlign::Left);
+        if (it.getIndex() == s_selected_item_index) {
+            ui.addLabel(myprintf("> {} <"_s, { it.get()->describe() }), "small-selected"_sv);
+        } else {
+            ui.addLabel(it.get()->describe());
+        }
+    }
+}
+
+void show_drop_window()
+{
+    auto& game = *AppState::the().game;
+    auto& player = *game.player();
+
+    if (player.inventory().is_empty()) {
+        UI::Toast::show(getText("msg_no_items_in_inventory"_s));
+        return;
+    }
+
+    s_selected_item_index = 0;
+    s_item_quantity = 0;
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_drop_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, drop_window_proc);
+}
+
 bool any_input_consuming_windows_are_open()
 {
-    return UI::isWindowOpen(pick_up_window_proc);
+    return UI::isWindowOpen(pick_up_window_proc) || UI::isWindowOpen(drop_window_proc);
 }
 
 }
