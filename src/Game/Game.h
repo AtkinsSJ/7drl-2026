@@ -20,6 +20,8 @@ public:
 
     ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool() { return m_item_chunk_pool; }
 
+    Player* player() { return m_player; }
+
 private:
     explicit Game(u32 width, u32 height);
     MemoryArena m_arena;

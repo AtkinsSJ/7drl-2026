@@ -45,3 +45,11 @@ OwnPtr<Item> Item::try_add_to_stack(NonnullOwnPtr<Item> source)
     source->m_quantity = remainder;
     return source;
 }
+
+String Item::describe() const
+{
+    auto& def = ItemCatalogue::the().find(m_type);
+    if (m_quantity == 1)
+        return def.name;
+    return myprintf("{} x {}"_s, { def.name, formatInt(m_quantity) });
+}

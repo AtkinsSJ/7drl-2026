@@ -6,6 +6,7 @@
 
 #include "../AppState.h"
 #include <Debug/Console.h>
+#include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
 #include <Gfx/Renderer.h>
 #include <Settings/Settings.h>
@@ -22,6 +23,46 @@ ConsoleCommand(exit)
 {
     consoleWriteLine("Quitting game..."_s, ConsoleLineStyle::Success);
     AppState::the().appStatus = AppStatus::Quit;
+}
+
+ConsoleCommand(give)
+{
+    auto& game = AppState::the().game;
+    if (!game || !game->player())
+        return;
+    auto& player = *game->player();
+
+    u32 quantity = 1;
+    StringView item_name;
+
+    TokenReader tokens { arguments };
+
+    auto error = [] {
+        consoleWriteLine("Usage: give (itemName) | give (quantity) (itemName)"_s, ConsoleLineStyle::Error);
+    };
+
+    if (argumentsCount == 1) {
+        item_name = tokens.next_token().release_value();
+    } else if (argumentsCount == 2) {
+        if (auto requested_quantity = tokens.next_token().value().to_int(); requested_quantity.has_value() && requested_quantity.value() > 0) {
+            quantity = requested_quantity.release_value();
+        } else {
+            error();
+            return;
+        }
+
+        item_name = tokens.next_token().release_value();
+    } else {
+        error();
+        return;
+    }
+
+    if (auto item_type = ItemCatalogue::the().find_name(item_name.deprecated_to_string()); item_type.has_value()) {
+        player.give_item(adopt_own(*new Item(item_type.release_value(), quantity)));
+        consoleWriteLine(myprintf("Giving player {} {}"_s, { formatInt(quantity), item_name }), ConsoleLineStyle::Success);
+    } else {
+        consoleWriteLine(myprintf("No known item named '{}'"_s, { item_name }), ConsoleLineStyle::Error);
+    }
 }
 
 ConsoleCommand(hello)
@@ -163,6 +204,7 @@ void initCommands(Console* console)
 #define AddCommand(name, minArgs, maxArgs) console->commands.put(#name##_h, Command(#name##_h, &cmd_##name, minArgs, maxArgs))
     AddCommand(help, 0, 0);
     AddCommand(exit, 0, 0);
+    AddCommand(give, 1, 2);
     AddCommand(hello, 0, 1);
     AddCommand(items, 0, 0);
     AddCommand(reload_assets, 0, 0);

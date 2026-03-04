@@ -18,6 +18,8 @@ public:
     u32 quantity() const { return m_quantity; }
     void increase_quantity(u32 amount);
 
+    String describe() const;
+
     // Try to combine source into this item. If it can't be done, or won't all fit, returns the leftover item.
     OwnPtr<Item> try_add_to_stack(NonnullOwnPtr<Item> source);
 

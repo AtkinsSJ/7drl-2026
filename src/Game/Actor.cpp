@@ -5,12 +5,29 @@
  */
 
 #include "Actor.h"
+#include <Game/Item.h>
+#include <Game/ItemCatalogue.h>
 #include <Game/Map.h>
 
-Actor::Actor(s32 x, s32 y)
+Actor::Actor(s32 x, s32 y, ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool)
     : m_x(x)
     , m_y(y)
 {
+    initChunkedArray(&m_inventory, &item_chunk_pool);
+}
+
+void Actor::give_item(NonnullOwnPtr<Item> item)
+{
+    // Try to add it to existing item stacks
+    for (auto it = m_inventory.iterate(); it.hasNext(); it.next()) {
+        auto& existing_item = *it.get();
+        auto leftover = existing_item.try_add_to_stack(move(item));
+        if (leftover == nullptr)
+            return;
+        item = leftover.release_nonnull();
+    }
+    // Append any remainder
+    m_inventory.append(move(item));
 }
 
 void Actor::set_map(Map* map)

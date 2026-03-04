@@ -11,8 +11,8 @@
 
 class Player final : public Actor {
 public:
-    Player(s32 x, s32 y)
-        : Actor(x, y)
+    Player(s32 x, s32 y, ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool)
+        : Actor(x, y, item_chunk_pool)
         , m_sprite("player"_sv, 0)
     {
     }

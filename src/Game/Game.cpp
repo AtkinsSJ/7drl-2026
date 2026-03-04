@@ -7,8 +7,10 @@
 #include "Game.h"
 #include "AppState.h"
 #include <Debug/Debug.h>
+#include <Game/Item.h>
 #include <Game/Player.h>
 #include <Gfx/Renderer.h>
+#include <Input/Input.h>
 
 NonnullOwnPtr<Game> Game::create()
 {
@@ -25,7 +27,7 @@ Game::Game(u32 width, u32 height)
     m_map = Map::generate_surface(width, height, *random, m_arena, m_item_chunk_pool);
 
     // Pop a player somewhere
-    auto player = adopt_own(*new Player(width / 2, height / 2));
+    auto player = adopt_own(*new Player(width / 2, height / 2, m_item_chunk_pool));
     m_player = player.ptr();
     m_map->add_actor(move(player));
 }
@@ -34,17 +36,32 @@ AppStatus Game::update_and_render(float delta_time)
 {
     DEBUG_FUNCTION_T(DebugCodeDataTag::GameUpdate);
 
-    // Try and update the player
-    // FIXME: Don't do this if there's a menu open or something. Figure that out.
-    if (m_player) {
-        auto player_moved = m_player->try_act_from_user_input();
+    // UI!
+    if (!isInputCaptured()) {
+        if (keyJustPressed(SDLK_i)) {
+            // TODO: Toggle an inventory window
+            if (m_player) {
+                auto& inventory = m_player->inventory();
+                logInfo("====== Inventory: {} item ======"_s, { formatInt(inventory.count) });
+                for (auto it = inventory.iterate(); it.hasNext(); it.next()) {
+                    auto& item = *it.get();
+                    logInfo("- {}"_s, { item.describe() });
+                }
+            }
+        }
 
-        // If they did something, update everyone else
-        if (player_moved)
-            m_map->update();
+        // Try and update the player
+        // FIXME: Don't do this if there's a menu open or something. Figure that out.
+        if (m_player) {
+            auto player_moved = m_player->try_act_from_user_input();
 
-        the_renderer().world_camera().set_position(v2(m_player->x() + 0.5f, m_player->y() + 0.5f));
-        the_renderer().world_camera().snap_to_rectangle({ 0, 0, static_cast<s32>(m_map->width()), static_cast<s32>(m_map->height()) });
+            // If they did something, update everyone else
+            if (player_moved)
+                m_map->update();
+
+            the_renderer().world_camera().set_position(v2(m_player->x() + 0.5f, m_player->y() + 0.5f));
+            the_renderer().world_camera().snap_to_rectangle({ 0, 0, static_cast<s32>(m_map->width()), static_cast<s32>(m_map->height()) });
+        }
     }
 
     // Render

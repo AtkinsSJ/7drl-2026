@@ -36,5 +36,5 @@ void Player::update()
 void Player::render(float delta_time)
 {
     auto& renderer = the_renderer();
-    drawSingleSprite(&renderer.world_buffer(), &m_sprite.get(), { static_cast<s32>(x()), static_cast<s32>(y()), 1, 1 }, renderer.shaderIds.pixelArt, Colour::white());
+    drawSingleSprite(&renderer.world_buffer(), &m_sprite.get(), { x(), y(), 1, 1 }, renderer.shaderIds.pixelArt, Colour::white());
 }
