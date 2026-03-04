@@ -29,6 +29,7 @@ public:
     }
 
     ChunkedArray<NonnullOwnPtr<Item>> const& items() const { return m_items; }
+    ChunkedArray<NonnullOwnPtr<Item>>& items() { return m_items; }
     Item& add_item(ItemType);
 
 private:

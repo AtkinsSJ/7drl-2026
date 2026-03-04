@@ -94,6 +94,10 @@ padding 2
 #background             ninepatch btn_white 24 24 24 255
 #background color 255 0 255 255
 
+:Label small-selected
+extends small
+textColor         255 255   0 255
+
 :Label cost-affordable
 font              normal
 textColor           0 255   0 255

@@ -21,6 +21,7 @@ public:
     ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool() { return m_item_chunk_pool; }
 
     Player* player() { return m_player; }
+    Map* map() { return m_map.ptr(); }
 
 private:
     explicit Game(u32 width, u32 height);

@@ -65,12 +65,14 @@ locale_pl Polski
 title_about          About
 title_debug_tools    Debug Tools
 title_delete_save    Delete saved game
+title_drop_items     Drop items
 title_help           Help
 title_inspect        Inspecting {0}, {1}
 title_inventory      Inventory
 title_load_game      Load a game
 title_menu           Menu
 title_overwrite_save Save game
+title_pick_up_items  Pick up items
 title_save_game      Save
 title_settings       Settings
 
@@ -80,7 +82,9 @@ msg_delete_save_failure          Failed to delete '{0}'!
 msg_load_success                 Game loaded
 msg_load_failure                 Failed to load game as '{0}'!
 msg_load_version_too_new         This save file was created by a newer version of the game, so it's very likely that loading it will break things! You probably want to update the game first.
+msg_no_items_in_location         There is nothing here to pick up.
 msg_no_saved_games               No saved games found.
+msg_picked_up_item               Picked up {0}.
 msg_save_success                 Game saved as '{0}'
 msg_save_failure                 Failed to save game as '{0}'!
 msg_save_overwrite_confirm       Saving as '{0}' will overwrite a previous saved game

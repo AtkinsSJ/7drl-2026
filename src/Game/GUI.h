@@ -10,5 +10,8 @@ namespace GUI {
 
 void toggle_inventory();
 void toggle_help();
+void show_pick_up_window();
+
+bool any_input_consuming_windows_are_open();
 
 }
