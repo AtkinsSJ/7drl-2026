@@ -17,7 +17,9 @@ public:
     Sprite& sprite() const { return m_sprite.get(); }
     u32 quantity() const { return m_quantity; }
     void increase_quantity(u32 amount);
+    void decrease_quantity(u32 amount);
 
+    String name() const;
     String describe() const;
 
     // Try to combine source into this item. If it can't be done, or won't all fit, returns the leftover item.

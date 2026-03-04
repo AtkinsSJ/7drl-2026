@@ -98,6 +98,10 @@ padding 2
 extends small
 textColor         255 255   0 255
 
+:Label small-instructions
+extends small
+textColor         196 196 196 255
+
 :Label cost-affordable
 font              normal
 textColor           0 255   0 255

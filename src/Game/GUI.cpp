@@ -15,6 +15,12 @@ namespace GUI {
 // Ew, globals. But it's the easiest way to make persistence work in windows until I rework that.
 static u32 s_selected_item_index = 0;
 static u32 s_item_quantity = 1;
+static void select_item_index(u32 index, ChunkedArray<NonnullOwnPtr<Item>>& items)
+{
+    s_selected_item_index = index;
+    // Default to the whole item stack.
+    s_item_quantity = items[index]->quantity();
+}
 
 static void inventory_window_proc(UI::WindowContext* context, void*)
 {
@@ -99,13 +105,32 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
     }
 
     if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
-        s_selected_item_index--;
+        select_item_index(s_selected_item_index - 1, tile.items());
     if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < tile.items().count - 1)
-        s_selected_item_index++;
+        select_item_index(s_selected_item_index + 1, tile.items());
+    if (keyJustPressed(SDLK_PLUS) || keyJustPressed(SDLK_KP_PLUS)) {
+        // TODO: Shortcut to select all?
+        s_item_quantity = min(s_item_quantity + 1, tile.items()[s_selected_item_index]->quantity());
+    }
+    if (keyJustPressed(SDLK_MINUS) || keyJustPressed(SDLK_KP_MINUS)) {
+        // TODO: Shortcut to select 1?
+        s_item_quantity = max(s_item_quantity - 1, 1);
+    }
     if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
-        auto item = tile.items().take_index(s_selected_item_index, true);
-        UI::Toast::show(getText("msg_picked_up_item"_s, { item->describe() }));
-        player.give_item(move(item));
+        // If we're taking the whole stack, transfer it directly.
+        if (s_item_quantity == tile.items()[s_selected_item_index]->quantity()) {
+            auto item = tile.items().take_index(s_selected_item_index, true);
+            UI::Toast::show(getText("msg_picked_up_item"_s, { item->describe() }));
+            player.give_item(move(item));
+        }
+        // Otherwise, create a new item of the type and quantity, and give that.
+        else {
+            auto& source_item = tile.items()[s_selected_item_index];
+            source_item->decrease_quantity(s_item_quantity);
+            auto new_item = adopt_own(*new Item(source_item->type(), s_item_quantity));
+            UI::Toast::show(getText("msg_picked_up_item"_s, { new_item->describe() }));
+            player.give_item(move(new_item));
+        }
         player.set_has_acted(true);
 
         if (tile.items().is_empty()) {
@@ -114,20 +139,26 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
         }
 
         if (s_selected_item_index >= tile.items().count)
-            s_selected_item_index = tile.items().count - 1;
+            select_item_index(tile.items().count - 1, tile.items());
+        else
+            select_item_index(s_selected_item_index, tile.items());
     }
 
     UI::Panel& ui = context->windowPanel;
-    ui.startNewLine(HAlign::Left);
-    ui.addLabel("Up/Down to select an item. Enter to pick it up. Escape to close this."_sv);
     for (auto it = tile.items().iterate(); it.hasNext(); it.next()) {
         ui.startNewLine(HAlign::Left);
         if (it.getIndex() == s_selected_item_index) {
-            ui.addLabel(myprintf("> {} <"_s, { it.get()->describe() }), "small-selected"_sv);
+            auto& item = *it.get();
+            String quantity_string = ""_s;
+            if (item.quantity() > 1)
+                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(item.quantity()) });
+            ui.addLabel(myprintf("> Take {}{} <"_s, { quantity_string, item.name() }), "small-selected"_sv);
         } else {
             ui.addLabel(it.get()->describe());
         }
     }
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Up/Down to select an item.\n+/- to adjust quantity.\nEnter to pick it up.\nEscape to close this."_sv, "small-instructions"_sv);
 }
 
 void show_pick_up_window()
@@ -142,7 +173,8 @@ void show_pick_up_window()
         return;
     }
 
-    s_selected_item_index = 0;
+    select_item_index(0, tile.items());
+
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_pick_up_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, pick_up_window_proc);
 }
 
@@ -170,13 +202,33 @@ static void drop_window_proc(UI::WindowContext* context, void*)
     }
 
     if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
-        s_selected_item_index--;
+        select_item_index(s_selected_item_index - 1, player.inventory());
     if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < tile.items().count - 1)
-        s_selected_item_index++;
+        select_item_index(s_selected_item_index + 1, player.inventory());
+    if (keyJustPressed(SDLK_PLUS) || keyJustPressed(SDLK_KP_PLUS)) {
+        // TODO: Shortcut to select all?
+        s_item_quantity = min(s_item_quantity + 1, player.inventory()[s_selected_item_index]->quantity());
+    }
+    if (keyJustPressed(SDLK_MINUS) || keyJustPressed(SDLK_KP_MINUS)) {
+        // TODO: Shortcut to select 1?
+        s_item_quantity = max(s_item_quantity - 1, 1);
+    }
     if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
-        auto item = player.inventory().take_index(s_selected_item_index, true);
-        UI::Toast::show(getText("msg_dropped_item"_s, { item->describe() }));
-        map.tile_at(player.x(), player.y()).add_item(move(item));
+        // If we're taking the whole stack, transfer it directly.
+        if (s_item_quantity == player.inventory()[s_selected_item_index]->quantity()) {
+            auto item = player.inventory().take_index(s_selected_item_index, true);
+            UI::Toast::show(getText("msg_dropped_item"_s, { item->describe() }));
+            map.tile_at(player.x(), player.y()).add_item(move(item));
+        }
+        // Otherwise, create a new item of the type and quantity, and give that.
+        else {
+            auto& source_item = player.inventory()[s_selected_item_index];
+            source_item->decrease_quantity(s_item_quantity);
+            auto new_item = adopt_own(*new Item(source_item->type(), s_item_quantity));
+            UI::Toast::show(getText("msg_dropped_item"_s, { new_item->describe() }));
+            map.tile_at(player.x(), player.y()).add_item(move(new_item));
+        }
+
         player.set_has_acted(true);
 
         if (player.inventory().is_empty()) {
@@ -185,20 +237,26 @@ static void drop_window_proc(UI::WindowContext* context, void*)
         }
 
         if (s_selected_item_index >= player.inventory().count)
-            s_selected_item_index = player.inventory().count - 1;
+            select_item_index(player.inventory().count - 1, player.inventory());
+        else
+            select_item_index(s_selected_item_index, player.inventory());
     }
 
     UI::Panel& ui = context->windowPanel;
-    ui.startNewLine(HAlign::Left);
-    ui.addLabel("Up/Down to select an item. Enter to drop it. Escape to close this."_sv);
     for (auto it = player.inventory().iterate(); it.hasNext(); it.next()) {
         ui.startNewLine(HAlign::Left);
         if (it.getIndex() == s_selected_item_index) {
-            ui.addLabel(myprintf("> {} <"_s, { it.get()->describe() }), "small-selected"_sv);
+            auto& item = *it.get();
+            String quantity_string = ""_s;
+            if (item.quantity() > 1)
+                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(item.quantity()) });
+            ui.addLabel(myprintf("> Drop {}{} <"_s, { quantity_string, item.name() }), "small-selected"_sv);
         } else {
             ui.addLabel(it.get()->describe());
         }
     }
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Up/Down to select an item.\n+/- to adjust quantity.\nEnter to drop it.\nEscape to close this."_sv, "small-instructions"_sv);
 }
 
 void show_drop_window()
@@ -211,8 +269,7 @@ void show_drop_window()
         return;
     }
 
-    s_selected_item_index = 0;
-    s_item_quantity = 0;
+    select_item_index(0, player.inventory());
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_drop_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, drop_window_proc);
 }
 

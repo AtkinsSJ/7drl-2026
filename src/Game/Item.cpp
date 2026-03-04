@@ -21,6 +21,12 @@ void Item::increase_quantity(u32 amount)
     m_quantity += amount;
 }
 
+void Item::decrease_quantity(u32 amount)
+{
+    ASSERT(m_quantity > amount);
+    m_quantity -= amount;
+}
+
 OwnPtr<Item> Item::try_add_to_stack(NonnullOwnPtr<Item> source)
 {
     // Different items can't stack together.
@@ -46,10 +52,12 @@ OwnPtr<Item> Item::try_add_to_stack(NonnullOwnPtr<Item> source)
     return source;
 }
 
+String Item::name() const
+{
+    return ItemCatalogue::the().find(m_type).name;
+}
+
 String Item::describe() const
 {
-    auto& def = ItemCatalogue::the().find(m_type);
-    if (m_quantity == 1)
-        return def.name;
-    return myprintf("{} x {}"_s, { def.name, formatInt(m_quantity) });
+    return myprintf("{} x {}"_s, { name(), formatInt(m_quantity) });
 }
