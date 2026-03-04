@@ -7,6 +7,7 @@
 #include "Game.h"
 #include "AppState.h"
 #include <Debug/Debug.h>
+#include <Game/GUI.h>
 #include <Game/Item.h>
 #include <Game/Player.h>
 #include <Gfx/Renderer.h>
@@ -39,15 +40,7 @@ AppStatus Game::update_and_render(float delta_time)
     // UI!
     if (!isInputCaptured()) {
         if (keyJustPressed(SDLK_i)) {
-            // TODO: Toggle an inventory window
-            if (m_player) {
-                auto& inventory = m_player->inventory();
-                logInfo("====== Inventory: {} item ======"_s, { formatInt(inventory.count) });
-                for (auto it = inventory.iterate(); it.hasNext(); it.next()) {
-                    auto& item = *it.get();
-                    logInfo("- {}"_s, { item.describe() });
-                }
-            }
+            GUI::toggle_inventory();
         }
 
         // Try and update the player
