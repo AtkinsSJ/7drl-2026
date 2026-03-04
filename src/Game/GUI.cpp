@@ -104,6 +104,7 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
         auto item = tile.items().take_index(s_selected_item_index, true);
         UI::Toast::show(getText("msg_picked_up_item"_s, { item->describe() }));
         player.give_item(move(item));
+        player.set_has_acted(true);
 
         if (tile.items().is_empty()) {
             UI::closeWindow(pick_up_window_proc);

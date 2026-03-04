@@ -17,11 +17,14 @@ public:
     {
     }
 
-    bool try_act_from_user_input();
+    void try_act_from_user_input();
+    bool has_acted() const { return m_has_acted; }
+    void set_has_acted(bool value) { m_has_acted = value; }
 
     void update() override;
     void render(float delta_time) override;
 
 private:
     SpriteRef m_sprite;
+    bool m_has_acted { false };
 };

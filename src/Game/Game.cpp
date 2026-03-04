@@ -7,7 +7,6 @@
 #include "Game.h"
 #include "AppState.h"
 #include <Debug/Debug.h>
-#include <Game/GUI.h>
 #include <Game/ItemCatalogue.h>
 #include <Game/Player.h>
 #include <Gfx/Renderer.h>
@@ -58,25 +57,15 @@ AppStatus Game::update_and_render(float delta_time)
 
     // UI!
     if (!isInputCaptured()) {
-        if (keyJustPressed(SDLK_i)) {
-            GUI::toggle_inventory();
-        }
-        if (keyJustPressed(SDLK_h)) {
-            GUI::toggle_help();
-        }
-        if (keyJustPressed(SDLK_p)) {
-            GUI::show_pick_up_window();
-        }
-
         // Try and update the player
-        bool pass_time = false;
-        if (m_player && !GUI::any_input_consuming_windows_are_open())
-            pass_time = m_player->try_act_from_user_input();
+        if (m_player)
+            m_player->try_act_from_user_input();
 
         // If they did something, update everyone else
-        if (pass_time) {
+        if (m_player && m_player->has_acted()) {
             m_map->update();
             focus_camera(*m_map, m_player->x(), m_player->y());
+            m_player->set_has_acted(false);
         }
     }
 
