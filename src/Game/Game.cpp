@@ -12,9 +12,11 @@
 #include <Game/Player.h>
 #include <Gfx/Renderer.h>
 #include <Input/Input.h>
+#include <UI/Toast.h>
 
 NonnullOwnPtr<Game> Game::create()
 {
+    UI::Toast::show("Press 'h' to show help"_sv);
     return adopt_own(*new Game(128, 128));
 }
 
@@ -41,6 +43,9 @@ AppStatus Game::update_and_render(float delta_time)
     if (!isInputCaptured()) {
         if (keyJustPressed(SDLK_i)) {
             GUI::toggle_inventory();
+        }
+        if (keyJustPressed(SDLK_h)) {
+            GUI::toggle_help();
         }
 
         // Try and update the player

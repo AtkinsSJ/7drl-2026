@@ -9,5 +9,6 @@
 namespace GUI {
 
 void toggle_inventory();
+void toggle_help();
 
 }
