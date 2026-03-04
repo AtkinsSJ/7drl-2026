@@ -11,12 +11,18 @@
 
 class Item {
 public:
-    explicit Item(ItemType);
+    explicit Item(ItemType, u32 quantity = 1);
 
     ItemType type() const { return m_type; }
     Sprite& sprite() const { return m_sprite.get(); }
+    u32 quantity() const { return m_quantity; }
+    void increase_quantity(u32 amount);
+
+    // Try to combine source into this item. If it can't be done, or won't all fit, returns the leftover item.
+    OwnPtr<Item> try_add_to_stack(NonnullOwnPtr<Item> source);
 
 private:
     ItemType m_type;
     SpriteRef m_sprite;
+    u32 m_quantity { 1 };
 };

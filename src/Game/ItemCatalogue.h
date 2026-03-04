@@ -18,6 +18,7 @@ struct ItemDef {
     ItemType type;
     String name;
     String sprite_name;
+    u32 stack_size { 1 };
 };
 
 class ItemCatalogue final
@@ -31,6 +32,8 @@ public:
 
     Optional<ItemType> find_name(String const& name) const;
     ItemDef const& find(ItemType) const;
+
+    ChunkedArray<ItemDef> const& defs() const { return m_item_defs; }
 
     // ^ AssetManagerListener
     virtual void before_assets_unloaded() override;

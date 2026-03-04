@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2017-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2017-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "../AppState.h"
 #include <Debug/Console.h>
+#include <Game/ItemCatalogue.h>
 #include <Gfx/Renderer.h>
 #include <Settings/Settings.h>
 #include <UI/Toast.h>
@@ -15,7 +16,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4100) // Disable unused-arg warnings for commands, as they all have to take the same args.
 
-#define ConsoleCommand(name) void cmd_##name(Console* console, s32 argumentsCount, StringView arguments)
+#define ConsoleCommand(name) static void cmd_##name([[maybe_unused]] Console* console, [[maybe_unused]] s32 argumentsCount, [[maybe_unused]] StringView arguments)
 
 ConsoleCommand(exit)
 {
@@ -38,6 +39,18 @@ ConsoleCommand(help)
         it.next()) {
         Command* command = it.get();
         consoleWriteLine(myprintf(" - {0}"_s, { command->name }));
+    }
+}
+
+ConsoleCommand(items)
+{
+    consoleWriteLine("Items:"_s);
+
+    for (auto it = ItemCatalogue::the().defs().iterate();
+        it.hasNext();
+        it.next()) {
+        auto& item_def = it.get();
+        consoleWriteLine(myprintf(" - #{}: {} sprite({}) stack({})"_s, { formatInt(item_def.type), item_def.name, item_def.sprite_name, formatInt(item_def.stack_size) }));
     }
 }
 
@@ -151,6 +164,7 @@ void initCommands(Console* console)
     AddCommand(help, 0, 0);
     AddCommand(exit, 0, 0);
     AddCommand(hello, 0, 1);
+    AddCommand(items, 0, 0);
     AddCommand(reload_assets, 0, 0);
     AddCommand(reload_settings, 0, 0);
     AddCommand(setting, 0, -1);

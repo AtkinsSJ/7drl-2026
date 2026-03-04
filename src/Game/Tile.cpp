@@ -7,6 +7,7 @@
 #include "Tile.h"
 #include "AppState.h"
 #include <Game/Item.h>
+#include <Game/ItemCatalogue.h>
 
 Tile::Tile(Terrain terrain, ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool)
     : m_terrain(terrain)
@@ -41,6 +42,17 @@ void Tile::fetch_sprite()
 
 Item& Tile::add_item(ItemType item_type)
 {
-    auto* item = m_items.append(adopt_own(*new Item(item_type)));
-    return **item;
+    auto& def = ItemCatalogue::the().find(item_type);
+    if (def.stack_size > 1 && !m_items.is_empty()) {
+        // For stackable items, try to combine it with an existing stack.
+        auto existing_item = m_items.find_first([&](auto& item) {
+            return item->type() == item_type && item->quantity() < def.stack_size;
+        });
+        if (existing_item.has_value()) {
+            existing_item.value().value()->increase_quantity(1);
+            return *existing_item.value().value();
+        }
+    }
+
+    return **m_items.append(adopt_own(*new Item(item_type)));
 }

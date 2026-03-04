@@ -84,6 +84,17 @@ public:
                 asset_manager().add_asset(SpriteGroup::asset_type(), name.value());
 
                 current_item.value().sprite_name = catalogue.m_strings.intern(name.value());
+            } else if (command == "stackSize"_sv) {
+                if (!current_item.has_value())
+                    return reader.make_error_message("'stackSize' is only valid inside :Item"_s);
+
+                auto stack_size = reader.read_int<u32>();
+                if (!stack_size.has_value() || reader.peek_token().has_value())
+                    return reader.make_error_message("Couldn't parse stackSize. Expected: 'stackSize count'"_s);
+
+                current_item.value().stack_size = stack_size.release_value();
+            } else {
+                return reader.make_error_message("Unrecognized command."_s);
             }
         }
 

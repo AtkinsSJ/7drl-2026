@@ -1,5 +1,7 @@
 :Item stick
 sprite i_stick
+stackSize 20
 
 :Item rock
 sprite i_rock
+stackSize 20
