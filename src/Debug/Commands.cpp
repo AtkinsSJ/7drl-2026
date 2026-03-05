@@ -16,9 +16,6 @@
 #include <Util/StringBuilder.h>
 #include <Util/TokenReader.h>
 
-#pragma warning(push)
-#pragma warning(disable : 4100) // Disable unused-arg warnings for commands, as they all have to take the same args.
-
 #define ConsoleCommand(name) static void cmd_##name([[maybe_unused]] Console* console, [[maybe_unused]] s32 argumentsCount, [[maybe_unused]] StringView arguments)
 
 ConsoleCommand(exit)
@@ -265,5 +262,3 @@ void initCommands(Console* console)
     AddCommand(zoom, 0, 1);
 #undef AddCommand
 }
-
-#pragma warning(pop)
