@@ -2,6 +2,6 @@
 sprite i_stick
 stackSize 20
 
-:Item rock
-sprite i_rock
+:Item stone
+sprite i_stone
 stackSize 20

@@ -51,12 +51,12 @@ NonnullOwnPtr<Map> Map::generate_surface(u32 width, u32 height, Random& random, 
         map->tile_at(x, y).add_item(stick);
     }
 
-    ItemType rock = item_catalogue.find_name("rock"_s).release_value();
-    auto rock_count = random.random_between(width * height / 300, width * height / 200);
-    for (auto i = 0; i < rock_count; ++i) {
+    ItemType stone = item_catalogue.find_name("stone"_s).release_value();
+    auto stone_count = random.random_between(width * height / 300, width * height / 200);
+    for (auto i = 0; i < stone_count; ++i) {
         auto x = random.random_below(width);
         auto y = random.random_below(height);
-        map->tile_at(x, y).add_item(rock);
+        map->tile_at(x, y).add_item(stone);
     }
 
     // Initialize all sprites

@@ -44,11 +44,11 @@ Game::Game(u32 width, u32 height)
     auto& start_tile = m_map->tile_at(m_player->x(), m_player->y());
     auto& item_catalogue = ItemCatalogue::the();
     auto stick_type = item_catalogue.find_name("stick"_s).value();
-    auto rock_type = item_catalogue.find_name("rock"_s).value();
+    auto stone_type = item_catalogue.find_name("stone"_s).value();
     for (auto i = 0; i < 5; ++i)
         start_tile.add_item(stick_type);
     for (auto i = 0; i < 7; ++i)
-        start_tile.add_item(rock_type);
+        start_tile.add_item(stone_type);
 }
 
 AppStatus Game::update_and_render(float delta_time)
