@@ -33,7 +33,7 @@ public:
     virtual ErrorOr<NonnullOwnPtr<Asset>> load_asset(AssetMetadata& metadata, Blob file_data) override
     {
         if (metadata.type != m_items_asset_type)
-            return { "UH OH"_s };
+            return { "Wrong asset type for ItemsAssetLoader"_s };
 
         // NB: We directly load the items into here as we read them.
         auto& catalogue = ItemCatalogue::the();

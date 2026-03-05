@@ -32,6 +32,7 @@
 #include <Debug/Console.h>
 #include <Debug/DebugAssetLoader.h>
 #include <Game/ItemCatalogue.h>
+#include <Game/RecipeCatalogue.h>
 #include <Gfx/AssetLoader.h>
 #include <Gfx/Renderer.h>
 #include <IO/SavedGames.h>
@@ -132,6 +133,8 @@ int main(int argc, char* argv[])
 
     assets.register_asset_loader(ItemCatalogue::make_loader());
     assets.register_listener(&ItemCatalogue::the());
+    assets.register_asset_loader(RecipeCatalogue::make_loader());
+    assets.register_listener(&RecipeCatalogue::the());
 
     assets.scan_assets();
     assets.load_assets();

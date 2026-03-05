@@ -5,3 +5,9 @@ sprite 1 0
 :SpriteGroup i_stone items.png 16x16
 sprite 0 1
 sprite 1 1
+
+:SpriteGroup i_knapping_stone items.png 16x16
+sprite 0 2
+
+:SpriteGroup i_axe_head items.png 16x16 
+sprite 0 3

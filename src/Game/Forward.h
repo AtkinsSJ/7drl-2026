@@ -16,3 +16,4 @@ class Tile;
 class Player;
 
 using ItemType = u32;
+using RecipeType = u32;

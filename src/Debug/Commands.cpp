@@ -8,10 +8,12 @@
 #include <Debug/Console.h>
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
+#include <Game/RecipeCatalogue.h>
 #include <Gfx/Renderer.h>
 #include <Settings/Settings.h>
 #include <UI/Toast.h>
 #include <UI/Window.h>
+#include <Util/StringBuilder.h>
 #include <Util/TokenReader.h>
 
 #pragma warning(push)
@@ -92,6 +94,53 @@ ConsoleCommand(items)
         it.next()) {
         auto& item_def = it.get();
         consoleWriteLine(myprintf(" - #{}: {} sprite({}) stack({})"_s, { formatInt(item_def.type), item_def.name, item_def.sprite_name, formatInt(item_def.stack_size) }));
+    }
+}
+
+ConsoleCommand(recipes)
+{
+    consoleWriteLine("Recipes:"_s);
+
+    auto dump_item_list = [](Array<RecipeDef::RecipeItem> const& list) -> StringView {
+        StringBuilder builder;
+        for (auto i = 0; i < list.count; ++i) {
+            if (i)
+                builder.append(", "_sv);
+            builder.append(list[i].item_name);
+            builder.append(" x "_sv);
+            builder.append(formatInt(list[i].quantity));
+        }
+        return builder.to_string_view();
+    };
+
+    auto dump_shape = [](Optional<RecipeShape> const& shape) -> StringView {
+        if (!shape.has_value())
+            return "None"_sv;
+        StringBuilder builder;
+        for (auto y = 0; y < shape.value().h; ++y) {
+            if (y)
+                builder.append('/');
+            for (auto x = 0; x < shape.value().w; ++x) {
+                builder.append(shape.value().get(x, y) ? 'X' : '.');
+            }
+        }
+        return builder.to_string_view();
+    };
+
+    for (auto it = RecipeCatalogue::the().defs().iterate();
+        it.hasNext();
+        it.next()) {
+        auto& recipe = it.get();
+        consoleWriteLine(myprintf(" - #{}: {}, method #{}, in-progress {}, ingredients ({}), outputs ({}), shape ({})"_s,
+            {
+                formatInt(recipe.type),
+                recipe.name,
+                formatInt(recipe.method),
+                recipe.in_progress_item_name,
+                dump_item_list(recipe.ingredients),
+                dump_item_list(recipe.outputs),
+                dump_shape(recipe.shape),
+            }));
     }
 }
 
@@ -207,6 +256,7 @@ void initCommands(Console* console)
     AddCommand(give, 1, 2);
     AddCommand(hello, 0, 1);
     AddCommand(items, 0, 0);
+    AddCommand(recipes, 0, 0);
     AddCommand(reload_assets, 0, 0);
     AddCommand(reload_settings, 0, 0);
     AddCommand(setting, 0, -1);

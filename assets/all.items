@@ -5,3 +5,9 @@ stackSize 20
 :Item stone
 sprite i_stone
 stackSize 20
+
+:Item partially_knapped_axe_head
+sprite i_knapping_stone
+
+:Item axe_head
+sprite i_axe_head

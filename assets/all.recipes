@@ -1,0 +1,12 @@
+:Recipe axe_head
+method knapping
+inProgress partially_knapped_axe_head
+ingredients 2 stone
+outputs 1 axe_head, 1 stone
+knappingShape {
+.XX..
+XXXX.
+XXXXX
+XXXX.
+.XX..
+}
