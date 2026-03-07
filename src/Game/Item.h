@@ -9,6 +9,11 @@
 #include <Game/Forward.h>
 #include <Gfx/Sprite.h>
 
+struct ActiveCraftingRecipe {
+    RecipeID id;
+};
+using ItemData = Variant<Empty, ActiveCraftingRecipe>;
+
 class Item {
 public:
     explicit Item(ItemType, u32 quantity = 1);
@@ -22,6 +27,10 @@ public:
     String name() const;
     String describe() const;
 
+    ItemData const& data() const { return m_data; }
+    ItemData& data() { return m_data; }
+    void set_data(ItemData&& data) { m_data = move(data); }
+
     // Try to combine source into this item. If it can't be done, or won't all fit, returns the leftover item.
     OwnPtr<Item> try_add_to_stack(NonnullOwnPtr<Item> source);
 
@@ -29,4 +38,5 @@ private:
     ItemType m_type;
     SpriteRef m_sprite;
     u32 m_quantity { 1 };
+    ItemData m_data {};
 };

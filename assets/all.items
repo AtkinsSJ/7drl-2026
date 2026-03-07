@@ -9,5 +9,8 @@ stackSize 20
 :Item partially_knapped_axe_head
 sprite i_knapping_stone
 
+:Item abstract_stone_sculpture
+sprite i_stone_mess
+
 :Item axe_head
 sprite i_axe_head

@@ -30,6 +30,41 @@ void Actor::give_item(NonnullOwnPtr<Item> item)
     m_inventory.append(move(item));
 }
 
+bool Actor::has_item(ItemType type, u32 quantity) const
+{
+    auto remaining_quantity = quantity;
+    for (auto it = m_inventory.iterate(); it.hasNext(); it.next()) {
+        auto& existing_item = *it.get();
+        if (existing_item.type() == type) {
+            remaining_quantity -= min(remaining_quantity, existing_item.quantity());
+            if (remaining_quantity == 0)
+                return true;
+        }
+    }
+    return false;
+}
+
+void Actor::remove_item(ItemType type, u32 quantity)
+{
+    auto remaining_quantity = quantity;
+    // We iterate backwards so that we remove from partial stacks first.
+    while (remaining_quantity > 0) {
+        auto maybe_item = m_inventory.find_last([type](auto& item) {
+            return item->type() == type;
+        });
+        if (!maybe_item.has_value())
+            break;
+        auto& existing_item = *maybe_item.value().value();
+        if (existing_item.quantity() <= remaining_quantity) {
+            remaining_quantity -= existing_item.quantity();
+            m_inventory.take_index(maybe_item.value().index());
+        } else {
+            existing_item.decrease_quantity(remaining_quantity);
+            remaining_quantity = 0;
+        }
+    }
+}
+
 void Actor::set_map(Map* map)
 {
     if (m_map) {

@@ -98,18 +98,6 @@ ConsoleCommand(recipes)
 {
     consoleWriteLine("Recipes:"_s);
 
-    auto dump_item_list = [](Array<RecipeDef::RecipeItem> const& list) -> StringView {
-        StringBuilder builder;
-        for (auto i = 0; i < list.count; ++i) {
-            if (i)
-                builder.append(", "_sv);
-            builder.append(list[i].item_name);
-            builder.append(" x "_sv);
-            builder.append(formatInt(list[i].quantity));
-        }
-        return builder.to_string_view();
-    };
-
     auto dump_shape = [](Optional<RecipeShape> const& shape) -> StringView {
         if (!shape.has_value())
             return "None"_sv;
@@ -128,14 +116,16 @@ ConsoleCommand(recipes)
         it.hasNext();
         it.next()) {
         auto& recipe = it.get();
-        consoleWriteLine(myprintf(" - #{}: {}, method #{}, in-progress {}, ingredients ({}), outputs ({}), shape ({})"_s,
+        consoleWriteLine(myprintf(" - #{}: {} \"{}\", method #{}, inProgress {}, ingredients ({}), outputs ({}), cancelledOutputs ({}), shape ({})"_s,
             {
-                formatInt(recipe.type),
+                formatInt(recipe.id),
                 recipe.name,
+                recipe.description,
                 formatInt(recipe.method),
                 recipe.in_progress_item_name,
-                dump_item_list(recipe.ingredients),
-                dump_item_list(recipe.outputs),
+                describe_recipe_item_list(recipe.ingredients),
+                describe_recipe_item_list(recipe.outputs),
+                describe_recipe_item_list(recipe.cancelled_outputs),
                 dump_shape(recipe.shape),
             }));
     }

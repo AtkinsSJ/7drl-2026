@@ -16,4 +16,6 @@ class Tile;
 class Player;
 
 using ItemType = u32;
-using RecipeType = u32;
+using RecipeID = u32;
+
+enum class RecipeMethod : u8;

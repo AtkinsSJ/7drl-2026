@@ -34,6 +34,8 @@ public:
     ChunkedArray<NonnullOwnPtr<Item>> const& inventory() const { return m_inventory; }
     ChunkedArray<NonnullOwnPtr<Item>>& inventory() { return m_inventory; }
     void give_item(NonnullOwnPtr<Item>);
+    bool has_item(ItemType type, u32 quantity) const;
+    void remove_item(ItemType type, u32 quantity);
 
     void set_map(Map*);
 

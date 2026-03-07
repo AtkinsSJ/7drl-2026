@@ -7,8 +7,11 @@
 #include "GUI.h"
 #include <AppState.h>
 #include <Game/Item.h>
+#include <Game/ItemCatalogue.h>
+#include <Game/RecipeCatalogue.h>
 #include <UI/Toast.h>
 #include <UI/Window.h>
+#include <Util/BitArray.h>
 
 namespace GUI {
 
@@ -66,6 +69,8 @@ static void help_window_proc(UI::WindowContext* context, void*)
     ui.addLabel("h: Help (this window)"_s);
     ui.startNewLine(HAlign::Left);
     ui.addLabel("i: Inventory"_s);
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("k: Knap stones"_s);
     ui.startNewLine(HAlign::Left);
     ui.addLabel("p: Pick up item"_s);
     ui.startNewLine(HAlign::Left);
@@ -158,7 +163,7 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
         }
     }
     ui.startNewLine(HAlign::Left);
-    ui.addLabel("Up/Down to select an item.\n+/- to adjust quantity.\nEnter to pick it up.\nEscape to close this."_sv, "small-instructions"_sv);
+    ui.addLabel("Up/Down to highlight an item.\n+/- to adjust quantity.\nEnter to select it.\nEscape to close this."_sv, "small-instructions"_sv);
 }
 
 void show_pick_up_window()
@@ -256,7 +261,7 @@ static void drop_window_proc(UI::WindowContext* context, void*)
         }
     }
     ui.startNewLine(HAlign::Left);
-    ui.addLabel("Up/Down to select an item.\n+/- to adjust quantity.\nEnter to drop it.\nEscape to close this."_sv, "small-instructions"_sv);
+    ui.addLabel("Up/Down to highlight an item.\n+/- to adjust quantity.\nEnter to select it.\nEscape to close this."_sv, "small-instructions"_sv);
 }
 
 void show_drop_window()
@@ -273,9 +278,121 @@ void show_drop_window()
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_drop_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, drop_window_proc);
 }
 
+static void recipe_selection_window_proc(UI::WindowContext* context, void* recipe_method_as_void_pointer)
+{
+    auto& game = AppState::the().game;
+    if (!game || !game->player() || !game->map()) {
+        logWarn("Closing recipe selection window because no game/player/map found."_s);
+        UI::closeWindow(recipe_selection_window_proc);
+        return;
+    }
+    auto& player = *game->player();
+
+    // We're treating this list of labels like a menu. [Up] and [Down] select the item, and [Enter] selects it.
+    if (keyJustPressed(SDLK_ESCAPE)) {
+        UI::closeWindow(recipe_selection_window_proc);
+        return;
+    }
+
+    auto recipe_method_int = reinterpret_cast<u64>(recipe_method_as_void_pointer);
+    ASSERT(recipe_method_int < to_underlying(RecipeMethod::COUNT));
+    auto recipe_method = static_cast<RecipeMethod>(recipe_method_int);
+    auto& recipe_catalogue = RecipeCatalogue::the();
+    auto& recipes = recipe_catalogue.all_recipes_with_method(recipe_method);
+
+    if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
+        s_selected_item_index--;
+    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < recipes.count - 1)
+        s_selected_item_index++;
+    if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
+        auto& recipe = recipe_catalogue.find(recipes.get(s_selected_item_index));
+        bool player_has_ingredients = recipe.ingredients.span().all_are([&player](RecipeDef::RecipeItem const& item) {
+            return player.has_item(item.item_type, item.quantity);
+        });
+        if (player_has_ingredients) {
+            // Remove the items.
+            for (auto const& ingredient : recipe.ingredients)
+                player.remove_item(ingredient.item_type, ingredient.quantity);
+
+            // Insert an item representing the in-progress craft.
+            auto in_progress_item_type = ItemCatalogue::the().find_name(recipe.in_progress_item_name).release_value();
+            auto in_progress_item = adopt_own(*new Item(in_progress_item_type));
+            in_progress_item->set_data(ActiveCraftingRecipe { .id = recipe.id });
+            player.give_item(move(in_progress_item));
+
+            // Show the crafting window and close this one.
+            switch (recipe_method) {
+            case RecipeMethod::Knapping:
+                show_knapping_window(recipe.id);
+                break;
+            case RecipeMethod::COUNT:
+                VERIFY_NOT_REACHED();
+            }
+            context->closeRequested = true;
+            return;
+        }
+
+        UI::Toast::show(myprintf("Missing some ingredients. Need: "_s, { describe_recipe_item_list(recipe.ingredients) }));
+    }
+
+    UI::Panel& ui = context->windowPanel;
+    for (auto it = recipes.iterate(); it.hasNext(); it.next()) {
+        auto recipe_id = it.get();
+        auto& recipe = recipe_catalogue.find(recipe_id);
+        ui.startNewLine(HAlign::Left);
+        if (it.getIndex() == s_selected_item_index) {
+            ui.addLabel(myprintf("> {} {} <"_s, { recipe_method_data[recipe_method].imperative, recipe.description }), "small-selected"_sv);
+        } else {
+            ui.addLabel(myprintf("{} {}"_s, { recipe_method_data[recipe_method].imperative, recipe.description }), "small-selected"_sv);
+        }
+    }
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Up/Down to highlight a recipe.\nEnter to select it.\nEscape to close this."_sv, "small-instructions"_sv);
+}
+
+void show_recipe_selection_window(RecipeMethod recipe_method)
+{
+    s_selected_item_index = 0;
+    UI::showWindow(UI::WindowTitle::fromTextAsset(recipe_method_data[recipe_method].selection_window_title), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, recipe_selection_window_proc, reinterpret_cast<void*>(recipe_method));
+}
+
+// Enough for 32x32
+constexpr int max_knapping_size = 32 * 32;
+constexpr int knapping_data_u64_count = BitArray::calculate_u64_count(max_knapping_size);
+static u64 s_knapping_progress_data[knapping_data_u64_count];
+static BitArray s_knapping_progress {};
+static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_void_pointer)
+{
+    auto& game = AppState::the().game;
+    if (!game || !game->player() || !game->map()) {
+        logWarn("Closing knapping window because no game/player/map found."_s);
+        UI::closeWindow(knapping_window_proc);
+        return;
+    }
+    // auto& player = *game->player();
+
+    UI::Panel& ui = context->windowPanel;
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Well hello there"_s);
+}
+
+void show_knapping_window(RecipeID recipe_id)
+{
+    if (s_knapping_progress.size == 0) {
+        initBitArray(&s_knapping_progress, max_knapping_size, { knapping_data_u64_count, knapping_data_u64_count, s_knapping_progress_data });
+    }
+    s_knapping_progress.unset_all();
+
+    // FIXME: Might be nice to put the recipe description in the title somehow.
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
+}
+
 bool any_input_consuming_windows_are_open()
 {
-    return UI::isWindowOpen(pick_up_window_proc) || UI::isWindowOpen(drop_window_proc);
+    return UI::isWindowOpen(pick_up_window_proc)
+        || UI::isWindowOpen(drop_window_proc)
+        || UI::isWindowOpen(recipe_selection_window_proc)
+        || UI::isWindowOpen(knapping_window_proc);
 }
 
 }

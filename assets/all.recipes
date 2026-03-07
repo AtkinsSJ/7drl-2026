@@ -1,8 +1,10 @@
 :Recipe axe_head
+description stone axe head
 method knapping
 inProgress partially_knapped_axe_head
 ingredients 2 stone
 outputs 1 axe_head, 1 stone
+cancelledOutputs 1 abstract_stone_sculpture, 1 stone
 knappingShape {
 .XX..
 XXXX.

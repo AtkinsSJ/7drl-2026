@@ -5,10 +5,14 @@
  */
 
 #include "RecipeCatalogue.h"
+
+#include "ItemCatalogue.h"
+
 #include <Assets/Asset.h>
 #include <Assets/AssetManager.h>
 #include <Gfx/Sprite.h>
 #include <Gfx/Texture.h>
+#include <Util/StringBuilder.h>
 
 class RecipesAsset final : public Asset {
 public:
@@ -41,11 +45,13 @@ public:
         LineReader reader { metadata.shortName, file_data };
         struct InternalRecipeDef {
             String name;
+            Optional<String> description;
             Optional<RecipeMethod> method;
             Optional<String> in_progress_item_name;
             Optional<RecipeShape> shape;
             Array<RecipeDef::RecipeItem> ingredients;
             Array<RecipeDef::RecipeItem> outputs;
+            Array<RecipeDef::RecipeItem> cancelled_outputs;
         };
         Optional<InternalRecipeDef> current_recipe;
 
@@ -54,23 +60,26 @@ public:
                 auto recipe = current_recipe.release_value();
 
                 // Validate it
-                if (!recipe.method.has_value() || !recipe.in_progress_item_name.has_value() || recipe.ingredients.is_empty() || recipe.outputs.is_empty()) {
-                    reader.error(":Recipe needs a method, inProgress, ingredients, and outputs defined"_s);
+                if (!recipe.description.has_value() || !recipe.method.has_value() || !recipe.in_progress_item_name.has_value() || recipe.ingredients.is_empty() || recipe.outputs.is_empty()) {
+                    reader.error(":Recipe needs a description, method, inProgress, ingredients, and outputs defined"_s);
                     return;
                 }
 
-                RecipeType recipe_type = catalogue.m_recipe_defs.count;
+                RecipeID recipe_id = catalogue.m_recipe_defs.count;
                 RecipeDef def {
-                    .type = recipe_type,
+                    .id = recipe_id,
                     .name = recipe.name,
+                    .description = recipe.description.release_value(),
                     .method = recipe.method.release_value(),
                     .in_progress_item_name = recipe.in_progress_item_name.release_value(),
                     .shape = move(recipe.shape),
                     .ingredients = move(recipe.ingredients),
                     .outputs = move(recipe.outputs),
+                    .cancelled_outputs = move(recipe.cancelled_outputs),
                 };
-                catalogue.m_recipe_name_to_type.put(recipe.name, recipe_type);
+                catalogue.m_recipe_name_to_type.put(recipe.name, recipe_id);
                 catalogue.m_recipe_defs.append(move(def));
+                catalogue.m_all_recipes_for_method[def.method].append(recipe_id);
             }
         };
 
@@ -118,6 +127,15 @@ public:
             if (!current_recipe.has_value())
                 return reader.make_error_message("Properties are only allowed inside :Recipe"_s);
 
+            if (command == "description"_sv) {
+                auto description = reader.remainder_of_current_line();
+                if (description.is_empty())
+                    return reader.make_error_message("Couldn't parse method. Expected: 'description some kind of description'"_s);
+
+                current_recipe.value().description = catalogue.m_strings.intern(description);
+                continue;
+            }
+
             if (command == "method"_sv) {
                 auto name = reader.next_token();
                 Optional<RecipeMethod> method;
@@ -152,6 +170,14 @@ public:
                 if (!outputs.has_value() || reader.peek_token().has_value())
                     return reader.make_error_message("Couldn't parse outputs. Expected: 'outputs (comma-separated list of `count item_name`)'"_s);
                 current_recipe.value().outputs = outputs.release_value();
+                continue;
+            }
+
+            if (command == "cancelledOutputs"_sv) {
+                auto cancelled_outputs = read_recipe_items(reader);
+                if (!cancelled_outputs.has_value() || reader.peek_token().has_value())
+                    return reader.make_error_message("Couldn't parse cancelledOutputs. Expected: 'cancelledOutputs (comma-separated list of `count item_name`)'"_s);
+                current_recipe.value().cancelled_outputs = cancelled_outputs.release_value();
                 continue;
             }
 
@@ -207,6 +233,9 @@ RecipeCatalogue::RecipeCatalogue()
     : m_recipe_name_to_type(1024)
 {
     initChunkedArray(&m_recipe_defs, &asset_manager().arena, 1024);
+    for (auto method : enum_values<RecipeMethod>()) {
+        initChunkedArray(&m_all_recipes_for_method[method], &asset_manager().arena, 128);
+    }
 }
 
 NonnullOwnPtr<AssetLoader> RecipeCatalogue::make_loader()
@@ -214,23 +243,49 @@ NonnullOwnPtr<AssetLoader> RecipeCatalogue::make_loader()
     return adopt_own(*new RecipesAssetLoader);
 }
 
-Optional<RecipeType> RecipeCatalogue::find_name(String const& name) const
+Optional<RecipeID> RecipeCatalogue::find_name(String const& name) const
 {
     return m_recipe_name_to_type.find_value(name);
 }
 
-RecipeDef const& RecipeCatalogue::find(RecipeType type) const
+RecipeDef const& RecipeCatalogue::find(RecipeID id) const
 {
-    return m_recipe_defs.get(type);
+    return m_recipe_defs.get(id);
 }
 
 void RecipeCatalogue::before_assets_unloaded()
 {
     m_recipe_defs.clear();
     m_recipe_name_to_type.clear();
+    for (auto method : enum_values<RecipeMethod>())
+        m_all_recipes_for_method[method].clear();
 }
 
 void RecipeCatalogue::after_assets_loaded()
 {
+    // Load all our item IDs
+    auto& item_catalogue = ItemCatalogue::the();
+    for (auto it = m_recipe_defs.iterate(); it.hasNext(); it.next()) {
+        auto& recipe = it.get();
+        for (auto& ingredient : recipe.ingredients)
+            ingredient.item_type = item_catalogue.find_name(ingredient.item_name).release_value();
+        for (auto& output : recipe.outputs)
+            output.item_type = item_catalogue.find_name(output.item_name).release_value();
+        for (auto& output : recipe.cancelled_outputs)
+            output.item_type = item_catalogue.find_name(output.item_name).release_value();
+    }
     logInfo("{} recipes loaded"_s, { formatInt(m_recipe_defs.count) });
+}
+
+StringView describe_recipe_item_list(ReadonlySpan<RecipeDef::RecipeItem> list)
+{
+    StringBuilder builder;
+    for (auto i = 0; i < list.size(); ++i) {
+        if (i)
+            builder.append(", "_sv);
+        builder.append(list[i].item_name);
+        builder.append(" x "_sv);
+        builder.append(formatInt(list[i].quantity));
+    }
+    return builder.to_string_view();
 }
