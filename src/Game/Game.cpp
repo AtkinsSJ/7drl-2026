@@ -38,6 +38,7 @@ Game::Game(u32 width, u32 height)
     auto player = adopt_own(*new Player(width / 2, height / 2, m_item_chunk_pool));
     m_player = player.ptr();
     m_map->add_actor(move(player));
+    the_renderer().world_camera().set_zoom(2);
     focus_camera(*m_map, m_player->x(), m_player->y());
 
     // DEBUG: Dump a bunch of items on the player
