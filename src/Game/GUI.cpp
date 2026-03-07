@@ -371,6 +371,11 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
     }
     auto& player = *game->player();
 
+    if (keyJustPressed(SDLK_ESCAPE)) {
+        context->closeRequested = true;
+        return;
+    }
+
     auto recipe_id = static_cast<RecipeID>(reinterpret_cast<u64>(recipe_id_as_void_pointer));
     auto& recipe = RecipeCatalogue::the().find(recipe_id);
 
@@ -384,9 +389,13 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
     for (auto y = 0, bit_index = 0; y < shape.h; ++y) {
         ui.startNewLine(HAlign::Left);
         for (auto x = 0; x < shape.w; ++x, ++bit_index) {
-            [[maybe_unused]] bool should_be_present = shape.get(x, y);
+            bool should_be_present = shape.get(x, y);
             bool is_present = s_knapping_progress[bit_index];
-            if (ui.addTextButton(is_present ? "X"_sv : "_"_sv, is_present ? ButtonState::Normal : ButtonState::Disabled)) {
+            // FIXME: Oh boy I don't like that we have to do the wrapping manually!!!
+            auto& sprite_group = SpriteGroup::get(is_present ? "btn_knapping_solid"_sv : "btn_knapping_removed"_sv);
+            auto& sprite = sprite_group.sprites[bit_index % sprite_group.count];
+            auto style = (is_present && !should_be_present) ? "knapping-to-remove"_sv : "knapping"_sv;
+            if (ui.addImageButton(&sprite, is_present ? ButtonState::Normal : ButtonState::Disabled, style)) {
                 s_knapping_progress.unset_bit(bit_index);
                 changed = true;
             }
@@ -421,7 +430,7 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
 
     // Instructions
     ui.startNewLine(HAlign::Left);
-    ui.addLabel("Click on sections to remove them, until you have the right shape. If you stop part-way, you can resume with [k]."_s, "small-instructions"_sv);
+    ui.addLabel("Click on highlighted sections to remove them, until you have the right shape. If you stop part-way, you can resume with [k]."_s, "small-instructions"_sv);
 
     // Control buttons
     ui.startNewLine(HAlign::Right);

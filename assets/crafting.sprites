@@ -1,0 +1,9 @@
+:SpriteGroup btn_knapping_solid crafting.png 16x16
+border 1 1
+sprite 0 0
+sprite 1 0
+
+:SpriteGroup btn_knapping_removed crafting.png 16x16
+border 1 1
+sprite 0 1
+sprite 1 1

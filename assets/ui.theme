@@ -162,7 +162,7 @@ contentPadding    4
 padding              12
 contentPadding           4
 widgetAlignment    TOP LEFT
-background        color 128 128 128 255
+background        color 0 0 0 255
 labelStyle        small
 
 :Panel mainMenu
@@ -193,9 +193,9 @@ background none
 :Window default
 titleLabelStyle          windowTitle
 titleBarHeight           32
-titleBarColor             96 196  96 255
-titleBarColorInactive     96 128  96 255
-titleBarButtonHoverColor 255  64  64 255
+titleBarColor             78  39   5 255
+titleBarColorInactive     39  20   2 255
+titleBarButtonHoverColor 200  32  32 255
 panelStyle               window
 
 :Window tooltip
@@ -236,3 +236,20 @@ thumbHover		color 128 128 128 245
 thumbPressed	color  96  96  96 245
 thumbDisabled	color  12  12  12 245
 width			12
+
+# Knapping UI
+:Button knapping
+extends default
+background none
+backgroundHover none
+backgroundPressed none
+backgroundDisabled none
+padding 2
+contentPadding 2
+
+:Button knapping-to-remove
+extends knapping
+background color 255 255 0 255
+backgroundHover color 255 255 0 255
+backgroundPressed color 255 255 0 255
+backgroundDisabled color 255 255 0 255
