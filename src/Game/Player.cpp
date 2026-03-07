@@ -37,7 +37,7 @@ void Player::try_act_from_user_input()
             return false;
         });
         if (existing_knapping_item.has_value()) {
-            GUI::show_knapping_window(existing_knapping_item.value().value()->data().get<ActiveCraftingRecipe>().id);
+            GUI::show_knapping_window(existing_knapping_item.value().value()->data().get<ActiveCraftingRecipe>().id, false);
         } else {
             GUI::show_recipe_selection_window(RecipeMethod::Knapping);
         }

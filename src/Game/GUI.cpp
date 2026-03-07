@@ -323,7 +323,7 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
             // Show the crafting window and close this one.
             switch (recipe_method) {
             case RecipeMethod::Knapping:
-                show_knapping_window(recipe.id);
+                show_knapping_window(recipe.id, true);
                 break;
             case RecipeMethod::COUNT:
                 VERIFY_NOT_REACHED();
@@ -369,19 +369,78 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
         UI::closeWindow(knapping_window_proc);
         return;
     }
-    // auto& player = *game->player();
+    auto& player = *game->player();
+
+    auto recipe_id = static_cast<RecipeID>(reinterpret_cast<u64>(recipe_id_as_void_pointer));
+    auto& recipe = RecipeCatalogue::the().find(recipe_id);
 
     UI::Panel& ui = context->windowPanel;
     ui.startNewLine(HAlign::Left);
-    ui.addLabel("Well hello there"_s);
+    ui.addLabel(myprintf("Knapping {}"_s, { recipe.description }));
+
+    // Grid of buttons for knapping
+    auto& shape = recipe.shape.value();
+    bool changed = false;
+    for (auto y = 0, bit_index = 0; y < shape.h; ++y) {
+        ui.startNewLine(HAlign::Left);
+        for (auto x = 0; x < shape.w; ++x, ++bit_index) {
+            [[maybe_unused]] bool should_be_present = shape.get(x, y);
+            bool is_present = s_knapping_progress[bit_index];
+            if (ui.addTextButton(is_present ? "X"_sv : "_"_sv, is_present ? ButtonState::Normal : ButtonState::Disabled)) {
+                s_knapping_progress.unset_bit(bit_index);
+                changed = true;
+            }
+        }
+    }
+
+    auto replace_in_progress_item_with_outputs = [&](auto& outputs) {
+        auto in_progress_item_type = ItemCatalogue::the().find_name(recipe.in_progress_item_name).release_value();
+        player.remove_item(in_progress_item_type, 1);
+
+        for (auto const& output : outputs)
+            player.give_item(adopt_own(*new Item(output.item_type, output.quantity)));
+    };
+
+    // If we now match the target pattern, complete the craft
+    if (changed) {
+        bool matches = [&] {
+            for (auto y = 0, bit_index = 0; y < shape.h; ++y) {
+                for (auto x = 0; x < shape.w; ++x, ++bit_index) {
+                    if (shape.get(x, y) != s_knapping_progress[bit_index])
+                        return false;
+                }
+            }
+            return true;
+        }();
+        if (matches) {
+            UI::Toast::show(myprintf("Created {}"_s, { recipe.description }));
+            replace_in_progress_item_with_outputs(recipe.outputs);
+            context->closeRequested = true;
+        }
+    }
+
+    // Instructions
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Click on sections to remove them, until you have the right shape. If you stop part-way, you can resume with [k]."_s, "small-instructions"_sv);
+
+    // Control buttons
+    ui.startNewLine(HAlign::Right);
+    if (ui.addTextButton("Discard"_sv)) {
+        replace_in_progress_item_with_outputs(recipe.cancelled_outputs);
+        context->closeRequested = true;
+    }
+    if (ui.addTextButton("Stop for now"_sv)) {
+        context->closeRequested = true;
+    }
 }
 
-void show_knapping_window(RecipeID recipe_id)
+void show_knapping_window(RecipeID recipe_id, bool new_craft)
 {
     if (s_knapping_progress.size == 0) {
         initBitArray(&s_knapping_progress, max_knapping_size, { knapping_data_u64_count, knapping_data_u64_count, s_knapping_progress_data });
     }
-    s_knapping_progress.unset_all();
+    if (new_craft)
+        s_knapping_progress.set_all();
 
     // FIXME: Might be nice to put the recipe description in the title somehow.
     UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
