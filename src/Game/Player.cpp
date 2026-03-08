@@ -5,10 +5,8 @@
  */
 
 #include "Player.h"
-
-#include "Item.h"
-
 #include <Game/GUI.h>
+#include <Game/Item.h>
 #include <Game/RecipeCatalogue.h>
 #include <Gfx/Renderer.h>
 #include <Input/Input.h>
@@ -24,7 +22,9 @@ void Player::try_act_from_user_input()
     else if (GUI::any_input_consuming_windows_are_open())
         return;
 
-    if (keyJustPressed(SDLK_p)) {
+    if (keyJustPressed(SDLK_m)) {
+        GUI::toggle_pause_menu();
+    } else if (keyJustPressed(SDLK_p)) {
         GUI::show_pick_up_window();
     } else if (keyJustPressed(SDLK_d)) {
         GUI::show_drop_window();

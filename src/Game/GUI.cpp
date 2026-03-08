@@ -32,13 +32,14 @@ static void pause_menu_window_proc(UI::WindowContext* context, void*)
     UI::Panel* ui = &context->windowPanel;
     ui->alignWidgets(HAlign::Fill);
 
-    if (ui->addTextButton(getText("button_resume"_s))) {
+    if (keyJustPressed(SDLK_ESCAPE))
         context->closeRequested = true;
-    }
 
-    if (ui->addTextButton(getText("button_about"_s))) {
+    if (ui->addTextButton(getText("button_resume"_s)))
+        context->closeRequested = true;
+
+    if (ui->addTextButton(getText("button_about"_s)))
         showAboutWindow();
-    }
 
     if (ui->addTextButton(getText("button_exit"_s))) {
         AppState::the().appStatus = AppStatus::MainMenu;
@@ -107,6 +108,8 @@ static void help_window_proc(UI::WindowContext* context, void*)
     ui.addLabel("p: Pick up item"_s);
     ui.startNewLine(HAlign::Left);
     ui.addLabel("d: Drop item"_s);
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("m: Show menu"_s);
 }
 
 void toggle_help()
