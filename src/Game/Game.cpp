@@ -36,21 +36,21 @@ Game::Game(u32 width, u32 height)
     m_map = Map::generate_surface(width, height, *random, m_arena, m_item_chunk_pool);
 
     // Pop a player somewhere
-    auto player = adopt_own(*new Player(width / 2, height / 2, m_item_chunk_pool));
+    auto player = adopt_own(*new Player(width / 2, height * 0.8f, m_item_chunk_pool));
     m_player = player.ptr();
     m_map->add_actor(move(player));
     the_renderer().world_camera().set_zoom(2);
     focus_camera(*m_map, m_player->x(), m_player->y());
 
-    // DEBUG: Dump a bunch of items on the player
-    auto& start_tile = m_map->tile_at(m_player->x(), m_player->y());
-    auto& item_catalogue = ItemCatalogue::the();
-    auto stick_type = item_catalogue.find_name("stick"_s).value();
-    auto stone_type = item_catalogue.find_name("stone"_s).value();
-    for (auto i = 0; i < 5; ++i)
-        start_tile.add_item(stick_type);
-    for (auto i = 0; i < 7; ++i)
-        start_tile.add_item(stone_type);
+    // // DEBUG: Dump a bunch of items on the player
+    // auto& start_tile = m_map->tile_at(m_player->x(), m_player->y());
+    // auto& item_catalogue = ItemCatalogue::the();
+    // auto stick_type = item_catalogue.find_name("stick"_s).value();
+    // auto stone_type = item_catalogue.find_name("stone"_s).value();
+    // for (auto i = 0; i < 5; ++i)
+    //     start_tile.add_item(stick_type);
+    // for (auto i = 0; i < 7; ++i)
+    //     start_tile.add_item(stone_type);
 }
 
 AppStatus Game::update_and_render(float delta_time)
