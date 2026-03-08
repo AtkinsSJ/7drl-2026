@@ -52,7 +52,7 @@ void toggle_pause_menu()
         UI::closeWindow(pause_menu_window_proc);
         return;
     }
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_menu"_s), 200, 200, v2i(0, 0), "default"_s,
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_menu"_s), 300, 200, v2i(0, 0), "default"_s,
         WindowFlags::Unique | WindowFlags::Modal | WindowFlags::AutomaticHeight | WindowFlags::Pause,
         pause_menu_window_proc);
 }
@@ -334,16 +334,19 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
     auto& recipe_catalogue = RecipeCatalogue::the();
     auto& recipes = recipe_catalogue.all_recipes_with_method(recipe_method);
 
+    auto player_can_craft = [&](RecipeDef const& recipe) {
+        return recipe.ingredients.span().all_are([&player](RecipeDef::RecipeItem const& item) {
+            return player.has_item(item.item_type, item.quantity);
+        });
+    };
+
     if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
         s_selected_item_index--;
     if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < recipes.count - 1)
         s_selected_item_index++;
     if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
         auto& recipe = recipe_catalogue.find(recipes.get(s_selected_item_index));
-        bool player_has_ingredients = recipe.ingredients.span().all_are([&player](RecipeDef::RecipeItem const& item) {
-            return player.has_item(item.item_type, item.quantity);
-        });
-        if (player_has_ingredients) {
+        if (player_can_craft(recipe)) {
             // Remove the items.
             for (auto const& ingredient : recipe.ingredients)
                 player.remove_item(ingredient.item_type, ingredient.quantity);
@@ -366,7 +369,7 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
             return;
         }
 
-        UI::Toast::show(myprintf("Missing some ingredients. Need: "_s, { describe_recipe_item_list(recipe.ingredients) }));
+        UI::Toast::show(myprintf("Missing some ingredients. Need: {}"_s, { describe_recipe_item_list(recipe.ingredients) }));
     }
 
     UI::Panel& ui = context->windowPanel;
@@ -375,9 +378,9 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
         auto& recipe = recipe_catalogue.find(recipe_id);
         ui.startNewLine(HAlign::Left);
         if (it.getIndex() == s_selected_item_index) {
-            ui.addLabel(myprintf("> {} {} <"_s, { recipe_method_data[recipe_method].imperative, recipe.description }), "small-selected"_sv);
+            ui.addLabel(myprintf("> {} {} ({}) <"_s, { recipe_method_data[recipe_method].imperative, recipe.description, describe_recipe_item_list(recipe.ingredients) }), "small-selected"_sv);
         } else {
-            ui.addLabel(myprintf("{} {}"_s, { recipe_method_data[recipe_method].imperative, recipe.description }), "small-selected"_sv);
+            ui.addLabel(myprintf("{} {} ({})"_s, { recipe_method_data[recipe_method].imperative, recipe.description, describe_recipe_item_list(recipe.ingredients) }), "small-selected"_sv);
         }
     }
     ui.startNewLine(HAlign::Left);
@@ -387,7 +390,7 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
 void show_recipe_selection_window(RecipeMethod recipe_method)
 {
     s_selected_item_index = 0;
-    UI::showWindow(UI::WindowTitle::fromTextAsset(recipe_method_data[recipe_method].selection_window_title), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, recipe_selection_window_proc, reinterpret_cast<void*>(recipe_method));
+    UI::showWindow(UI::WindowTitle::fromTextAsset(recipe_method_data[recipe_method].selection_window_title), 300, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, recipe_selection_window_proc, reinterpret_cast<void*>(recipe_method));
 }
 
 // Enough for 32x32
@@ -486,7 +489,7 @@ void show_knapping_window(RecipeID recipe_id, bool new_craft)
         s_knapping_progress.set_all();
 
     // FIXME: Might be nice to put the recipe description in the title somehow.
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 300, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
 }
 
 bool any_input_consuming_windows_are_open()
