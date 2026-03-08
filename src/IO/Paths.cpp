@@ -11,7 +11,7 @@ namespace Paths {
 
 String user_data()
 {
-    static String s_user_data_path = String::from_null_terminated(SDL_GetPrefPath("Baffled Badger Games", "CitySim"));
+    static String s_user_data_path = String::from_null_terminated(SDL_GetPrefPath("Baffled Badger Games", "7DRL-2026"));
     return s_user_data_path;
 }
 
