@@ -26,7 +26,7 @@ static void aboutWindowProc(UI::WindowContext* context, void* /*userData*/)
     ui->startNewLine(HAlign::Fill);
 
     if (ui->addTextButton(getText("button_website"_s))) {
-        open_url_unsafe("http://samatkins.co.uk"_sv);
+        open_url_unsafe("https://atkinssj.itch.io/7drl-2026"_sv);
     }
 }
 
