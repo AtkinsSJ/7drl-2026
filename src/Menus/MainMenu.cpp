@@ -27,9 +27,9 @@ AppStatus updateAndRenderMainMenu(float /*deltaTime*/)
     panel.addLabel(getText("game_subtitle"_s));
 
     String newGameText = getText("button_new_game"_s);
-    String loadText = getText("button_load"_s);
+    // String loadText = getText("button_load"_s);
     String creditsText = getText("button_credits"_s);
-    String settingsText = getText("button_settings"_s);
+    // String settingsText = getText("button_settings"_s);
     String aboutText = getText("button_about"_s);
     String exitText = getText("button_exit"_s);
 
@@ -37,15 +37,15 @@ AppStatus updateAndRenderMainMenu(float /*deltaTime*/)
         AppState::the().game = Game::create();
         result = AppStatus::Game;
     }
-    if (panel.addTextButton(loadText)) {
-        showLoadGameWindow();
-    }
+    // if (panel.addTextButton(loadText)) {
+    //     showLoadGameWindow();
+    // }
     if (panel.addTextButton(creditsText)) {
         result = AppStatus::Credits;
     }
-    if (panel.addTextButton(settingsText)) {
-        showSettingsWindow();
-    }
+    // if (panel.addTextButton(settingsText)) {
+    //     showSettingsWindow();
+    // }
     if (panel.addTextButton(aboutText)) {
         showAboutWindow();
     }
