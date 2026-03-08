@@ -10,6 +10,7 @@
 
 namespace GUI {
 
+void toggle_pause_menu();
 void toggle_inventory();
 void toggle_help();
 void show_pick_up_window();

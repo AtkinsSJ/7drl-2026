@@ -9,6 +9,7 @@
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
 #include <Game/RecipeCatalogue.h>
+#include <Menus/About.h>
 #include <UI/Toast.h>
 #include <UI/Window.h>
 #include <Util/BitArray.h>
@@ -23,6 +24,37 @@ static void select_item_index(u32 index, ChunkedArray<NonnullOwnPtr<Item>>& item
     s_selected_item_index = index;
     // Default to the whole item stack.
     s_item_quantity = items[index]->quantity();
+}
+
+static void pause_menu_window_proc(UI::WindowContext* context, void*)
+{
+    DEBUG_FUNCTION();
+    UI::Panel* ui = &context->windowPanel;
+    ui->alignWidgets(HAlign::Fill);
+
+    if (ui->addTextButton(getText("button_resume"_s))) {
+        context->closeRequested = true;
+    }
+
+    if (ui->addTextButton(getText("button_about"_s))) {
+        showAboutWindow();
+    }
+
+    if (ui->addTextButton(getText("button_exit"_s))) {
+        AppState::the().appStatus = AppStatus::MainMenu;
+        UI::closeAllWindows();
+    }
+}
+
+void toggle_pause_menu()
+{
+    if (UI::isWindowOpen(pause_menu_window_proc)) {
+        UI::closeWindow(pause_menu_window_proc);
+        return;
+    }
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_menu"_s), 200, 200, v2i(0, 0), "default"_s,
+        WindowFlags::Unique | WindowFlags::Modal | WindowFlags::AutomaticHeight | WindowFlags::Pause,
+        pause_menu_window_proc);
 }
 
 static void inventory_window_proc(UI::WindowContext* context, void*)
@@ -75,6 +107,8 @@ static void help_window_proc(UI::WindowContext* context, void*)
     ui.addLabel("p: Pick up item"_s);
     ui.startNewLine(HAlign::Left);
     ui.addLabel("d: Drop item"_s);
+    ui.startNewLine(HAlign::Left);
+    ui.addLabel("Escape: Show menu"_s);
 }
 
 void toggle_help()
