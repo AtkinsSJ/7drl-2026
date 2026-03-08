@@ -107,8 +107,6 @@ static void help_window_proc(UI::WindowContext* context, void*)
     ui.addLabel("p: Pick up item"_s);
     ui.startNewLine(HAlign::Left);
     ui.addLabel("d: Drop item"_s);
-    ui.startNewLine(HAlign::Left);
-    ui.addLabel("Escape: Show menu"_s);
 }
 
 void toggle_help()

@@ -58,9 +58,7 @@ AppStatus Game::update_and_render(float delta_time)
     DEBUG_FUNCTION_T(DebugCodeDataTag::GameUpdate);
 
     // UI!
-    if (keyJustPressed(SDLK_ESCAPE)) {
-        GUI::toggle_pause_menu();
-    } else if (!isInputCaptured()) {
+    if (!isInputCaptured()) {
         // Try and update the player
         if (m_player)
             m_player->try_act_from_user_input();
