@@ -28,6 +28,14 @@ add_subdirectory("tests")
 include_directories("src")
 target_include_directories(7drl-2026 PRIVATE ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
 
+include(FetchContent)
+FetchContent_Declare(
+    flecs
+    GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
+    GIT_TAG d7d0c4f7afb4518a6bae749efdc52c7cb5cffee6 # v4.1.5
+)
+FetchContent_MakeAvailable(flecs)
+
 target_compile_definitions(7drl-2026 PRIVATE
     $<$<CONFIG:Debug>:
         BUILD_DEBUG=1
@@ -37,6 +45,6 @@ target_compile_definitions(7drl-2026 PRIVATE
     >
 )
 
-target_link_libraries(7drl-2026 PRIVATE Util ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} SDL2_image::SDL2_image)
+target_link_libraries(7drl-2026 PRIVATE Util ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} SDL2_image::SDL2_image flecs::flecs_static)
 
 file(CREATE_LINK ${CMAKE_SOURCE_DIR}/assets ${CMAKE_BINARY_DIR}/assets SYMBOLIC)
