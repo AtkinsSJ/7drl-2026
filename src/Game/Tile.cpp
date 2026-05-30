@@ -9,12 +9,10 @@
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
 
-Tile::Tile(Terrain terrain, ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool)
+Tile::Tile(Terrain terrain)
     : m_terrain(terrain)
     , m_terrain_sprite(get_terrain_def(terrain).sprite_name, AppState::the().cosmeticRandom->next())
-    , m_actor(nullptr)
 {
-    initChunkedArray(&m_items, &item_chunk_pool);
 }
 
 void Tile::set_terrain(Terrain terrain)
@@ -40,34 +38,40 @@ void Tile::fetch_sprite()
     m_terrain_sprite = SpriteRef { get_terrain_def(m_terrain).sprite_name, AppState::the().cosmeticRandom->next() };
 }
 
-Item& Tile::add_item(ItemType item_type)
+TileItemsCache::TileItemsCache(MemoryArena& arena, u32 width, u32 height)
+    : m_tiles(arena.allocate_array_2d<ChunkedArray<flecs::entity>>(width, height))
 {
-    auto& def = ItemCatalogue::the().find(item_type);
-    if (def.stack_size > 1 && !m_items.is_empty()) {
-        // For stackable items, try to combine it with an existing stack.
-        auto existing_item = m_items.find_first([&](auto& item) {
-            return item->type() == item_type && item->quantity() < def.stack_size;
-        });
-        if (existing_item.has_value()) {
-            existing_item.value().value()->increase_quantity(1);
-            return *existing_item.value().value();
+    initChunkPool(&m_pool, &arena, 32);
+
+    // FIXME: Flat Array2 iteration
+    for (int y = 0; y < m_tiles.h; ++y) {
+        for (int x = 0; x < m_tiles.w; ++x) {
+            initChunkedArray(&m_tiles.get(x, y), &m_pool);
         }
     }
-
-    return **m_items.append(adopt_own(*new Item(item_type)));
 }
 
-void Tile::add_item(NonnullOwnPtr<Item> item)
+void TileItemsCache::add(s32 x, s32 y, flecs::entity item)
 {
-    // FIXME: Copy-paste from Actor::give_item! Make some kind of class for this.
-    // Try to add it to existing item stacks
-    for (auto it = m_items.iterate(); it.hasNext(); it.next()) {
-        auto& existing_item = *it.get();
-        auto leftover = existing_item.try_add_to_stack(move(item));
-        if (leftover == nullptr)
-            return;
-        item = leftover.release_nonnull();
+    m_tiles.get(x, y).append(item);
+}
+
+void TileItemsCache::clear()
+{
+    // FIXME: Flat Array2 iteration
+    for (int y = 0; y < m_tiles.h; ++y) {
+        for (int x = 0; x < m_tiles.w; ++x) {
+            m_tiles.get(x, y).clear();
+        }
     }
-    // Append any remainder
-    m_items.append(move(item));
+}
+
+void TileItemsCache::sort_and_compact(flecs::world)
+{
+    // TODO: Implement this!
+}
+
+ChunkedArray<flecs::entity>& TileItemsCache::items_in_tile(s32 x, s32 y)
+{
+    return m_tiles.get(x, y);
 }

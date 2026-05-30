@@ -5,59 +5,20 @@
  */
 
 #include "Item.h"
-#include "AppState.h"
+#include <Game/Components.h>
 #include <Game/ItemCatalogue.h>
 
-Item::Item(ItemType type, u32 quantity)
-    : m_type(type)
-    , m_quantity(quantity)
+u32 item_quantity(flecs::entity item)
 {
-    auto& def = ItemCatalogue::the().find(type);
-    m_sprite = { def.sprite_name, AppState::the().cosmeticRandom->next() };
+    if (auto* quantity = item.try_get<Quantity>())
+        return quantity->quantity;
+    return 1;
 }
 
-void Item::increase_quantity(u32 amount)
+String describe_item(flecs::entity item)
 {
-    m_quantity += amount;
-}
-
-void Item::decrease_quantity(u32 amount)
-{
-    ASSERT(m_quantity > amount);
-    m_quantity -= amount;
-}
-
-OwnPtr<Item> Item::try_add_to_stack(NonnullOwnPtr<Item> source)
-{
-    // Different items can't stack together.
-    if (m_type != source->m_type)
-        return source;
-
-    auto& def = ItemCatalogue::the().find(m_type);
-
-    // If the stack is full, just do nothing.
-    if (m_quantity >= def.stack_size)
-        return source;
-
-    // If it fits in one stack, consume the source.
-    if (m_quantity + source->m_quantity <= def.stack_size) {
-        m_quantity += source->m_quantity;
-        return nullptr;
-    }
-
-    // Otherwise, move as much as possible into this item.
-    auto remainder = (m_quantity + source->m_quantity) - def.stack_size;
-    m_quantity = def.stack_size;
-    source->m_quantity = remainder;
-    return source;
-}
-
-String Item::name() const
-{
-    return ItemCatalogue::the().find(m_type).name;
-}
-
-String Item::describe() const
-{
-    return myprintf("{} x {}"_s, { name(), formatInt(m_quantity) });
+    auto& name = item.get<Name>().name;
+    if (auto* quantity = item.try_get<Quantity>())
+        return myprintf("{} x {}"_s, { name, formatInt(quantity->quantity) });
+    return name;
 }

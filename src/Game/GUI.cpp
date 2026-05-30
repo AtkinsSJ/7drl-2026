@@ -6,8 +6,11 @@
 
 #include "GUI.h"
 #include <AppState.h>
+#include <Game/Components.h>
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
+#include <Game/Map.h>
+#include <Game/Player.h>
 #include <Game/RecipeCatalogue.h>
 #include <Menus/About.h>
 #include <UI/Toast.h>
@@ -19,11 +22,16 @@ namespace GUI {
 // Ew, globals. But it's the easiest way to make persistence work in windows until I rework that.
 static u32 s_selected_item_index = 0;
 static u32 s_item_quantity = 1;
-static void select_item_index(u32 index, ChunkedArray<NonnullOwnPtr<Item>>& items)
+static void select_item_index(u32 index, ChunkedArray<flecs::entity>& items)
 {
     s_selected_item_index = index;
     // Default to the whole item stack.
-    s_item_quantity = items[index]->quantity();
+    s_item_quantity = item_quantity(items[index]);
+}
+static void set_item_selection(u32 index, u32 quantity)
+{
+    s_selected_item_index = index;
+    s_item_quantity = quantity;
 }
 
 static void pause_menu_window_proc(UI::WindowContext* context, void*)
@@ -61,24 +69,32 @@ void toggle_pause_menu()
 static void inventory_window_proc(UI::WindowContext* context, void*)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player()) {
-        logWarn("Closing inventory window because no game or no player found."_s);
+    if (!game) {
+        logWarn("Closing inventory window because no game found."_s);
         UI::closeWindow(inventory_window_proc);
         return;
     }
-    auto& player = *game->player();
-    auto& inventory = player.inventory();
+    auto world = game->world();
+    auto player = game->player();
+
+    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+                                .with(world.component<InInventory>(), player)
+                                .build();
+
     UI::Panel& ui = context->windowPanel;
 
-    if (inventory.is_empty()) {
+    if (player_inventory) {
+        player_inventory.each([&ui](Name const& name, Quantity const* quantity) {
+            ui.startNewLine(HAlign::Left);
+            if (quantity) {
+                ui.addLabel(myprintf("{} x {}"_s, { name.name, formatInt(quantity->quantity) }));
+            } else {
+                ui.addLabel(name.name);
+            }
+        });
+    } else {
         ui.startNewLine(HAlign::Left);
         ui.addLabel("No items"_s);
-    } else {
-        for (auto it = inventory.iterate(); it.hasNext(); it.next()) {
-            auto& item = *it.get();
-            ui.startNewLine(HAlign::Left);
-            ui.addLabel(item.describe());
-        }
     }
 }
 
@@ -88,7 +104,7 @@ void toggle_inventory()
         UI::closeWindow(inventory_window_proc);
         return;
     }
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_inventory"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, inventory_window_proc);
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_inventory"_s), 200, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, inventory_window_proc);
 }
 
 static void help_window_proc(UI::WindowContext* context, void*)
@@ -118,22 +134,23 @@ void toggle_help()
         UI::closeWindow(help_window_proc);
         return;
     }
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_help"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, help_window_proc);
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_help"_s), 200, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, help_window_proc);
 }
 
 static void pick_up_window_proc(UI::WindowContext* context, void*)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player() || !game->map()) {
-        logWarn("Closing pick-up items window because no game/player/map found."_s);
+    if (!game) {
+        logWarn("Closing pick-up items window because no game found."_s);
         UI::closeWindow(pick_up_window_proc);
         return;
     }
-    auto& player = *game->player();
-    auto& map = *game->map();
-    auto& tile = map.tile_at(player.x(), player.y());
+    auto world = game->world();
+    auto player = game->player();
+    auto& player_position = player.get<Position>();
 
-    if (tile.items().is_empty()) {
+    auto& items_here = world.get_mut<TileItemsCache>().items_in_tile(player_position.x, player_position.y);
+    if (items_here.is_empty()) {
         UI::closeWindow(pick_up_window_proc);
         return;
     }
@@ -145,12 +162,12 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
     }
 
     if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
-        select_item_index(s_selected_item_index - 1, tile.items());
-    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < tile.items().count - 1)
-        select_item_index(s_selected_item_index + 1, tile.items());
+        select_item_index(s_selected_item_index - 1, items_here);
+    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < items_here.count - 1)
+        select_item_index(s_selected_item_index + 1, items_here);
     if (keyJustPressed(SDLK_PLUS) || keyJustPressed(SDLK_KP_PLUS)) {
         // TODO: Shortcut to select all?
-        s_item_quantity = min(s_item_quantity + 1, tile.items()[s_selected_item_index]->quantity());
+        s_item_quantity = min(s_item_quantity + 1, item_quantity(items_here[s_selected_item_index]));
     }
     if (keyJustPressed(SDLK_MINUS) || keyJustPressed(SDLK_KP_MINUS)) {
         // TODO: Shortcut to select 1?
@@ -158,43 +175,49 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
     }
     if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
         // If we're taking the whole stack, transfer it directly.
-        if (s_item_quantity == tile.items()[s_selected_item_index]->quantity()) {
-            auto item = tile.items().take_index(s_selected_item_index, true);
-            UI::Toast::show(getText("msg_picked_up_item"_s, { item->describe() }));
-            player.give_item(move(item));
+        auto source_item_quantity = item_quantity(items_here[s_selected_item_index]);
+        if (s_item_quantity == source_item_quantity) {
+            auto item = items_here.take_index(s_selected_item_index);
+            item.remove<Position>().add<InInventory>(player);
+            UI::Toast::show(getText("msg_picked_up_item"_s, { describe_item(item) }));
         }
         // Otherwise, create a new item of the type and quantity, and give that.
         else {
-            auto& source_item = tile.items()[s_selected_item_index];
-            source_item->decrease_quantity(s_item_quantity);
-            auto new_item = adopt_own(*new Item(source_item->type(), s_item_quantity));
-            UI::Toast::show(getText("msg_picked_up_item"_s, { new_item->describe() }));
-            player.give_item(move(new_item));
+            auto& source_item = items_here[s_selected_item_index];
+            source_item.set(Quantity { source_item_quantity - s_item_quantity });
+            auto new_item = source_item.clone()
+                                .set(Quantity { s_item_quantity })
+                                .remove<Position>()
+                                .add<InInventory>(player);
+            UI::Toast::show(getText("msg_picked_up_item"_s, { describe_item(new_item) }));
         }
-        player.set_has_acted(true);
 
-        if (tile.items().is_empty()) {
+        // FIXME: Need to trigger a turn!!!
+        // player.set_has_acted(true);
+
+        if (items_here.is_empty()) {
             UI::closeWindow(pick_up_window_proc);
             return;
         }
 
-        if (s_selected_item_index >= tile.items().count)
-            select_item_index(tile.items().count - 1, tile.items());
+        if (s_selected_item_index >= items_here.count)
+            select_item_index(items_here.count - 1, items_here);
         else
-            select_item_index(s_selected_item_index, tile.items());
+            select_item_index(s_selected_item_index, items_here);
     }
 
     UI::Panel& ui = context->windowPanel;
-    for (auto it = tile.items().iterate(); it.hasNext(); it.next()) {
+    for (auto it = items_here.iterate(); it.hasNext(); it.next()) {
         ui.startNewLine(HAlign::Left);
         if (it.getIndex() == s_selected_item_index) {
-            auto& item = *it.get();
+            auto item = it.get();
             String quantity_string = ""_s;
-            if (item.quantity() > 1)
-                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(item.quantity()) });
-            ui.addLabel(myprintf("> Take {}{} <"_s, { quantity_string, item.name() }), "small-selected"_sv);
+            auto quantity = item_quantity(item);
+            if (quantity > 1)
+                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(quantity) });
+            ui.addLabel(myprintf("> Take {}{} <"_s, { quantity_string, item.get<Name>().name }), "small-selected"_sv);
         } else {
-            ui.addLabel(it.get()->describe());
+            ui.addLabel(describe_item(it.get()));
         }
     }
     ui.startNewLine(HAlign::Left);
@@ -204,33 +227,36 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
 void show_pick_up_window()
 {
     auto& game = *AppState::the().game;
-    auto& player = *game.player();
-    auto& map = *game.map();
-    auto& tile = map.tile_at(player.x(), player.y());
+    auto player = game.player();
+    auto& player_position = player.get<Position>();
+    auto& tile_items = game.world().get_mut<TileItemsCache>().items_in_tile(player_position.x, player_position.y);
 
-    if (tile.items().is_empty()) {
+    if (tile_items.is_empty()) {
         UI::Toast::show(getText("msg_no_items_in_location"_s));
         return;
     }
 
-    select_item_index(0, tile.items());
+    select_item_index(0, tile_items);
 
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_pick_up_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, pick_up_window_proc);
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_pick_up_items"_s), 200, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, pick_up_window_proc);
 }
 
 static void drop_window_proc(UI::WindowContext* context, void*)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player() || !game->map()) {
-        logWarn("Closing drop items window because no game/player/map found."_s);
+    if (!game) {
+        logWarn("Closing drop items window because no game found."_s);
         UI::closeWindow(drop_window_proc);
         return;
     }
-    auto& player = *game->player();
-    auto& map = *game->map();
-    auto& tile = map.tile_at(player.x(), player.y());
+    auto world = game->world();
+    auto player = world.query<Player>().first();
 
-    if (player.inventory().is_empty()) {
+    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+                                .with(world.component<InInventory>(), player)
+                                .build();
+
+    if (!player_inventory) {
         UI::closeWindow(drop_window_proc);
         return;
     }
@@ -242,12 +268,15 @@ static void drop_window_proc(UI::WindowContext* context, void*)
     }
 
     if ((keyJustPressed(SDLK_UP) || keyJustPressed(SDLK_KP_8)) && s_selected_item_index > 0)
-        select_item_index(s_selected_item_index - 1, player.inventory());
-    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < tile.items().count - 1)
-        select_item_index(s_selected_item_index + 1, player.inventory());
+        set_item_selection(s_selected_item_index - 1, player_inventory);
+    if ((keyJustPressed(SDLK_DOWN) || keyJustPressed(SDLK_KP_2)) && s_selected_item_index < player_inventory.count() - 1)
+        set_item_selection(s_selected_item_index + 1, player_inventory);
+
+    auto selected_item = player_inventory.page(s_selected_item_index, 1).first();
+    auto selected_item_quantity = item_quantity(selected_item);
     if (keyJustPressed(SDLK_PLUS) || keyJustPressed(SDLK_KP_PLUS)) {
         // TODO: Shortcut to select all?
-        s_item_quantity = min(s_item_quantity + 1, player.inventory()[s_selected_item_index]->quantity());
+        s_item_quantity = min(s_item_quantity + 1, selected_item_quantity);
     }
     if (keyJustPressed(SDLK_MINUS) || keyJustPressed(SDLK_KP_MINUS)) {
         // TODO: Shortcut to select 1?
@@ -255,73 +284,86 @@ static void drop_window_proc(UI::WindowContext* context, void*)
     }
     if (keyJustPressed(SDLK_RETURN) || keyJustPressed(SDLK_KP_ENTER)) {
         // If we're taking the whole stack, transfer it directly.
-        if (s_item_quantity == player.inventory()[s_selected_item_index]->quantity()) {
-            auto item = player.inventory().take_index(s_selected_item_index, true);
-            UI::Toast::show(getText("msg_dropped_item"_s, { item->describe() }));
-            map.tile_at(player.x(), player.y()).add_item(move(item));
+        auto source_item_quantity = selected_item_quantity;
+        auto player_position = player.get<Position>();
+        if (s_item_quantity == source_item_quantity) {
+            selected_item.remove<InInventory>(player).set<Position>(player_position);
+            UI::Toast::show(getText("msg_dropped_item"_s, { describe_item(selected_item) }));
         }
         // Otherwise, create a new item of the type and quantity, and give that.
         else {
-            auto& source_item = player.inventory()[s_selected_item_index];
-            source_item->decrease_quantity(s_item_quantity);
-            auto new_item = adopt_own(*new Item(source_item->type(), s_item_quantity));
-            UI::Toast::show(getText("msg_dropped_item"_s, { new_item->describe() }));
-            map.tile_at(player.x(), player.y()).add_item(move(new_item));
+            selected_item.set(Quantity { source_item_quantity - s_item_quantity });
+            auto new_item = selected_item.clone()
+                                .set(Quantity { s_item_quantity })
+                                .remove<InInventory>(player)
+                                .set<Position>(player_position);
+            UI::Toast::show(getText("msg_dropped_item"_s, { describe_item(new_item) }));
         }
 
-        player.set_has_acted(true);
+        // FIXME: Need to trigger a turn!!!
+        // player.set_has_acted(true);
 
-        if (player.inventory().is_empty()) {
+        if (!player_inventory) {
             UI::closeWindow(drop_window_proc);
             return;
         }
 
-        if (s_selected_item_index >= player.inventory().count)
-            select_item_index(player.inventory().count - 1, player.inventory());
+        if (s_selected_item_index >= player_inventory.count())
+            set_item_selection(player_inventory.count() - 1, player_inventory);
         else
-            select_item_index(s_selected_item_index, player.inventory());
+            set_item_selection(s_selected_item_index, player_inventory);
     }
 
     UI::Panel& ui = context->windowPanel;
-    for (auto it = player.inventory().iterate(); it.hasNext(); it.next()) {
+    player_inventory.each([&ui](flecs::iter& it, size_t index, Name const& name, Quantity const* quantity) {
         ui.startNewLine(HAlign::Left);
-        if (it.getIndex() == s_selected_item_index) {
-            auto& item = *it.get();
+        if (index == s_selected_item_index) {
             String quantity_string = ""_s;
-            if (item.quantity() > 1)
-                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(item.quantity()) });
-            ui.addLabel(myprintf("> Drop {}{} <"_s, { quantity_string, item.name() }), "small-selected"_sv);
+            if (quantity && quantity->quantity > 1)
+                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(quantity->quantity) });
+            ui.addLabel(myprintf("> Drop {}{} <"_s, { quantity_string, name.name }), "small-selected"_sv);
         } else {
-            ui.addLabel(it.get()->describe());
+            ui.addLabel(describe_item(it.entity(index)));
         }
-    }
+    });
     ui.startNewLine(HAlign::Left);
     ui.addLabel("Up/Down to highlight an item.\n+/- to adjust quantity.\nEnter to select it.\nEscape to close this."_sv, "small-instructions"_sv);
 }
 
 void show_drop_window()
 {
-    auto& game = *AppState::the().game;
-    auto& player = *game.player();
+    auto& game = AppState::the().game;
+    if (!game) {
+        logWarn("Closing drop window because no game found."_s);
+        UI::closeWindow(inventory_window_proc);
+        return;
+    }
+    auto world = game->world();
+    auto player = game->player();
 
-    if (player.inventory().is_empty()) {
+    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+                                .with(world.component<InInventory>(), player)
+                                .build();
+
+    if (!player_inventory) {
         UI::Toast::show(getText("msg_no_items_in_inventory"_s));
         return;
     }
 
-    select_item_index(0, player.inventory());
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_drop_items"_s), 200, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, drop_window_proc);
+    set_item_selection(0, item_quantity(player_inventory.first()));
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_drop_items"_s), 200, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, drop_window_proc);
 }
 
 static void recipe_selection_window_proc(UI::WindowContext* context, void* recipe_method_as_void_pointer)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player() || !game->map()) {
-        logWarn("Closing recipe selection window because no game/player/map found."_s);
+    if (!game) {
+        logWarn("Closing recipe selection window because no game found."_s);
         UI::closeWindow(recipe_selection_window_proc);
         return;
     }
-    auto& player = *game->player();
+    auto world = game->world();
+    auto player = game->player();
 
     // We're treating this list of labels like a menu. [Up] and [Down] select the item, and [Enter] selects it.
     if (keyJustPressed(SDLK_ESCAPE)) {
@@ -335,9 +377,22 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
     auto& recipe_catalogue = RecipeCatalogue::the();
     auto& recipes = recipe_catalogue.all_recipes_with_method(recipe_method);
 
+    auto player_inventory = world.query_builder<Item const, Name const, Quantity* const>()
+                                .with(world.component<InInventory>(), player)
+                                .build();
+
     auto player_can_craft = [&](RecipeDef const& recipe) {
-        return recipe.ingredients.span().all_are([&player](RecipeDef::RecipeItem const& item) {
-            return player.has_item(item.item_type, item.quantity);
+        // FIXME: @Speed This can almost certainly be much faster.
+        // FIXME: This is currently written to assume each ingredient is in one stack.
+        return recipe.ingredients.span().all_are([&player_inventory](RecipeDef::RecipeItem const& ingredient) {
+            return player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const* quantity) {
+                if (item.type != ingredient.item_type)
+                    return false;
+
+                if (quantity)
+                    return ingredient.quantity <= quantity->quantity;
+                return ingredient.quantity == 1;
+            });
         });
     };
 
@@ -349,14 +404,28 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
         auto& recipe = recipe_catalogue.find(recipes.get(s_selected_item_index));
         if (player_can_craft(recipe)) {
             // Remove the items.
-            for (auto const& ingredient : recipe.ingredients)
-                player.remove_item(ingredient.item_type, ingredient.quantity);
+            // FIXME: @Speed This can almost certainly be much faster.
+            // FIXME: This is currently written to assume each ingredient is in one stack.
+            for (auto const& ingredient : recipe.ingredients) {
+                auto inventory_item = player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const*) {
+                    return item.type == ingredient.item_type;
+                });
+                auto inventory_quantity = item_quantity(inventory_item);
+                if (inventory_quantity == ingredient.quantity) {
+                    // Just remove it
+                    inventory_item.destruct();
+                } else {
+                    // Reduce it
+                    inventory_item.set(Quantity { inventory_quantity - ingredient.quantity });
+                }
+            }
 
             // Insert an item representing the in-progress craft.
-            auto in_progress_item_type = ItemCatalogue::the().find_name(recipe.in_progress_item_name).release_value();
-            auto in_progress_item = adopt_own(*new Item(in_progress_item_type));
-            in_progress_item->set_data(ActiveCraftingRecipe { .id = recipe.id });
-            player.give_item(move(in_progress_item));
+            auto& item_catalogue = ItemCatalogue::the();
+            auto in_progress_item_type = item_catalogue.find_name(recipe.in_progress_item_name).release_value();
+            item_catalogue.instantiate(world, in_progress_item_type)
+                .set(ActiveCraftingRecipe { .id = recipe.id })
+                .add<InInventory>(player);
 
             // Show the crafting window and close this one.
             switch (recipe_method) {
@@ -391,23 +460,24 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
 void show_recipe_selection_window(RecipeMethod recipe_method)
 {
     s_selected_item_index = 0;
-    UI::showWindow(UI::WindowTitle::fromTextAsset(recipe_method_data[recipe_method].selection_window_title), 300, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, recipe_selection_window_proc, reinterpret_cast<void*>(recipe_method));
+    UI::showWindow(UI::WindowTitle::fromTextAsset(recipe_method_data[recipe_method].selection_window_title), 300, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, recipe_selection_window_proc, reinterpret_cast<void*>(recipe_method));
 }
 
 // Enough for 32x32
 constexpr int max_knapping_size = 32 * 32;
 constexpr int knapping_data_u64_count = BitArray::calculate_u64_count(max_knapping_size);
 static u64 s_knapping_progress_data[knapping_data_u64_count];
-static BitArray s_knapping_progress {};
+static BitArray s_knapping_progress { };
 static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_void_pointer)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player() || !game->map()) {
-        logWarn("Closing knapping window because no game/player/map found."_s);
+    if (!game) {
+        logWarn("Closing knapping window because no game found."_s);
         UI::closeWindow(knapping_window_proc);
         return;
     }
-    auto& player = *game->player();
+    auto world = game->world();
+    auto player = game->player();
 
     if (keyJustPressed(SDLK_ESCAPE)) {
         context->closeRequested = true;
@@ -441,11 +511,19 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
     }
 
     auto replace_in_progress_item_with_outputs = [&](auto& outputs) {
-        auto in_progress_item_type = ItemCatalogue::the().find_name(recipe.in_progress_item_name).release_value();
-        player.remove_item(in_progress_item_type, 1);
+        auto& item_catalogue = ItemCatalogue::the();
+        auto in_progress_item_type = item_catalogue.find_name(recipe.in_progress_item_name).release_value();
+        auto player_inventory = world.query_builder<Item const>()
+                                    .with(world.component<InInventory>(), player)
+                                    .build();
+        player_inventory.find([in_progress_item_type](Item const& item) { return item.type == in_progress_item_type; })
+            .destruct();
 
-        for (auto const& output : outputs)
-            player.give_item(adopt_own(*new Item(output.item_type, output.quantity)));
+        for (auto const& output : outputs) {
+            item_catalogue.instantiate(world, output.item_type)
+                .set(Quantity { output.quantity })
+                .template add<InInventory>(player);
+        }
     };
 
     // If we now match the target pattern, complete the craft
@@ -490,7 +568,7 @@ void show_knapping_window(RecipeID recipe_id, bool new_craft)
         s_knapping_progress.set_all();
 
     // FIXME: Might be nice to put the recipe description in the title somehow.
-    UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 300, 200, {}, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
+    UI::showWindow(UI::WindowTitle::fromTextAsset("title_knapping"_s), 300, 200, { }, "default"_s, WindowFlags::AutomaticHeight | WindowFlags::UniqueKeepPosition, knapping_window_proc, reinterpret_cast<void*>(recipe_id));
 }
 
 bool any_input_consuming_windows_are_open()

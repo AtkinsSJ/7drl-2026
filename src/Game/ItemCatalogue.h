@@ -13,6 +13,7 @@
 #include <Util/HashTable.h>
 #include <Util/String.h>
 #include <Util/StringTable.h>
+#include <flecs.h>
 
 struct ItemDef {
     ItemType type;
@@ -32,6 +33,7 @@ public:
 
     Optional<ItemType> find_name(String const& name) const;
     ItemDef const& find(ItemType) const;
+    flecs::entity instantiate(flecs::world, ItemType) const;
 
     ChunkedArray<ItemDef> const& defs() const { return m_item_defs; }
 

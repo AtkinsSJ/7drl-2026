@@ -6,14 +6,15 @@
 
 #pragma once
 
-#include <Game/Actor.h>
+#include <Game/Forward.h>
 #include <Game/Terrain.h>
 #include <Gfx/Sprite.h>
+#include <flecs.h>
 
 class Tile {
 public:
     Tile() = default;
-    Tile(Terrain, ArrayChunkPool<NonnullOwnPtr<Item>>&);
+    explicit Tile(Terrain);
 
     void set_terrain(Terrain);
     void set_terrain_raw(Badge<Map>, Terrain);
@@ -21,21 +22,22 @@ public:
     Sprite& terrain_sprite() const;
     void fetch_sprite();
 
-    Actor* actor() const { return m_actor; }
-    void set_actor(Actor* actor)
-    {
-        ASSERT((actor == nullptr) != (m_actor == nullptr));
-        m_actor = actor;
-    }
-
-    ChunkedArray<NonnullOwnPtr<Item>> const& items() const { return m_items; }
-    ChunkedArray<NonnullOwnPtr<Item>>& items() { return m_items; }
-    Item& add_item(ItemType);
-    void add_item(NonnullOwnPtr<Item>);
-
 private:
     Terrain m_terrain;
     SpriteRef m_terrain_sprite;
-    Actor* m_actor;
-    ChunkedArray<NonnullOwnPtr<Item>> m_items;
+};
+
+class TileItemsCache {
+public:
+    explicit TileItemsCache(MemoryArena& arena, u32 width, u32 height);
+
+    void add(s32 x, s32 y, flecs::entity item);
+    void clear();
+    void sort_and_compact(flecs::world);
+
+    ChunkedArray<flecs::entity>& items_in_tile(s32 x, s32 y);
+
+private:
+    ArrayChunkPool<flecs::entity> m_pool;
+    Array2<ChunkedArray<flecs::entity>> m_tiles;
 };

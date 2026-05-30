@@ -6,6 +6,7 @@
 
 #include "../AppState.h"
 #include <Debug/Console.h>
+#include <Game/Components.h>
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
 #include <Game/RecipeCatalogue.h>
@@ -27,9 +28,10 @@ ConsoleCommand(exit)
 ConsoleCommand(give)
 {
     auto& game = AppState::the().game;
-    if (!game || !game->player())
+    if (!game)
         return;
-    auto& player = *game->player();
+    auto world = game->world();
+    auto player = game->player();
 
     u32 quantity = 1;
     StringView item_name;
@@ -56,8 +58,11 @@ ConsoleCommand(give)
         return;
     }
 
-    if (auto item_type = ItemCatalogue::the().find_name(item_name.deprecated_to_string()); item_type.has_value()) {
-        player.give_item(adopt_own(*new Item(item_type.release_value(), quantity)));
+    auto& item_catalogue = ItemCatalogue::the();
+    if (auto item_type = item_catalogue.find_name(item_name.deprecated_to_string()); item_type.has_value()) {
+        item_catalogue.instantiate(world, item_type.value())
+            .add<InInventory>(player)
+            .set(Quantity { quantity });
         consoleWriteLine(myprintf("Giving player {} {}"_s, { formatInt(quantity), item_name }), ConsoleLineStyle::Success);
     } else {
         consoleWriteLine(myprintf("No known item named '{}'"_s, { item_name }), ConsoleLineStyle::Error);

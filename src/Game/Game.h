@@ -7,10 +7,10 @@
 #pragma once
 
 #include "AppStatus.h"
-#include <Game/Map.h>
-#include <Game/Player.h>
 #include <Gfx/Camera.h>
+#include <Util/ChunkedArray.h>
 #include <Util/OwnPtr.h>
+#include <flecs.h>
 
 class Game {
 public:
@@ -18,16 +18,16 @@ public:
 
     AppStatus update_and_render(float delta_time);
 
-    ArrayChunkPool<NonnullOwnPtr<Item>>& item_chunk_pool() { return m_item_chunk_pool; }
+    ArrayChunkPool<flecs::entity>& entity_chunk_pool() { return m_entity_chunk_pool; }
 
-    Player* player() { return m_player; }
-    Map* map() { return m_map.ptr(); }
+    flecs::world world() { return m_world; }
+    flecs::entity player() const;
 
 private:
     explicit Game(u32 width, u32 height);
     MemoryArena m_arena;
-    ArrayChunkPool<NonnullOwnPtr<Item>> m_item_chunk_pool;
+    ArrayChunkPool<flecs::entity> m_entity_chunk_pool;
+    flecs::world m_world;
 
-    OwnPtr<Map> m_map;
-    Player* m_player;
+    flecs::entity m_simulation_phase;
 };

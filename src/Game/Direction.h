@@ -8,11 +8,13 @@
 
 #include <Util/Basic.h>
 
-class Game;
-class Map;
-class Tile;
-
-using ItemType = u32;
-using RecipeID = u32;
-
-enum class RecipeMethod : u8;
+enum class Direction : u8 {
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
+    NW,
+};

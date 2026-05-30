@@ -5,8 +5,11 @@
  */
 
 #include "ItemCatalogue.h"
+#include "AppState.h"
 #include <Assets/Asset.h>
 #include <Assets/AssetManager.h>
+#include <Game/Components.h>
+#include <Game/Item.h>
 #include <Gfx/Sprite.h>
 #include <Gfx/Texture.h>
 
@@ -109,7 +112,7 @@ private:
 
 ItemCatalogue& ItemCatalogue::the()
 {
-    static ItemCatalogue s_item_catalogue {};
+    static ItemCatalogue s_item_catalogue { };
     return s_item_catalogue;
 }
 
@@ -132,6 +135,16 @@ Optional<ItemType> ItemCatalogue::find_name(String const& name) const
 ItemDef const& ItemCatalogue::find(ItemType type) const
 {
     return m_item_defs.get(type);
+}
+
+flecs::entity ItemCatalogue::instantiate(flecs::world world, ItemType item_type) const
+{
+    auto def = m_item_defs.get(item_type);
+    // FIXME: Stackability
+    return world.entity()
+        .set<Item>({ item_type })
+        .set<Name>({ def.name })
+        .set<HasSprite>({ { def.sprite_name, AppState::the().cosmeticRandom->next() } });
 }
 
 void ItemCatalogue::before_assets_unloaded()
