@@ -20,6 +20,11 @@ struct HasSprite {
     Colour colour = Colour::white();
 };
 
+enum class DrawLayer : u8 {
+    Item,
+    Player,
+};
+
 struct Name {
     String name;
 };

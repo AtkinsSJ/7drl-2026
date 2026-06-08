@@ -145,7 +145,8 @@ flecs::entity ItemCatalogue::instantiate(flecs::world world, ItemType item_type)
         .set<Item>({ item_type })
         .set<Name>({ def.name })
         .set<Quantity>({ 1 })
-        .set<HasSprite>({ { def.sprite_name, AppState::the().cosmeticRandom->next() } });
+        .set<HasSprite>({ { def.sprite_name, AppState::the().cosmeticRandom->next() } })
+        .set(DrawLayer::Item);
 }
 
 void ItemCatalogue::before_assets_unloaded()

@@ -150,6 +150,10 @@ Game::Game(u32 width, u32 height)
         });
     m_world.system<Position const, HasSprite const>("Draw Entities")
         .kind(flecs::OnStore)
+        .with<DrawLayer const>()
+        .order_by<DrawLayer>([](flecs::entity_t, DrawLayer const* d1, flecs::entity_t, DrawLayer const* d2) {
+            return to_underlying(*d1) - to_underlying(*d2);
+        })
         .each([](Position const& position, HasSprite const& sprite) {
             auto& renderer = the_renderer();
             drawSingleSprite(&renderer.world_buffer(), &sprite.ref.get(), { position.x, position.y, 1, 1 },

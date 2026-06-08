@@ -107,7 +107,8 @@ void Map::generate(flecs::world world, u32 width, u32 height, Random& random, Me
                       .add<Player>()
                       .add<HasInventory>()
                       .set<Name>({ "player"_s })
-                      .set(HasSprite { .ref = { "player"_sv, 0 } });
+                      .set(HasSprite { .ref = { "player"_sv, 0 } })
+                      .set(DrawLayer::Player);
 
     // Give the player a few things
     give_item_to_entity(world, stick, 11, player);
