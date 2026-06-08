@@ -77,17 +77,17 @@ static void inventory_window_proc(UI::WindowContext* context, void*)
     auto world = game->world();
     auto player = game->player();
 
-    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+    auto player_inventory = world.query_builder<Name const, Quantity const>()
                                 .with(world.component<InInventory>(), player)
                                 .build();
 
     UI::Panel& ui = context->windowPanel;
 
     if (player_inventory) {
-        player_inventory.each([&ui](Name const& name, Quantity const* quantity) {
+        player_inventory.each([&ui](Name const& name, Quantity const quantity) {
             ui.startNewLine(HAlign::Left);
-            if (quantity) {
-                ui.addLabel(myprintf("{} x {}"_s, { name.name, formatInt(quantity->quantity) }));
+            if (quantity.quantity > 1) {
+                ui.addLabel(myprintf("{} x {}"_s, { name.name, formatInt(quantity.quantity) }));
             } else {
                 ui.addLabel(name.name);
             }
@@ -252,7 +252,7 @@ static void drop_window_proc(UI::WindowContext* context, void*)
     auto world = game->world();
     auto player = world.query<Player>().first();
 
-    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+    auto player_inventory = world.query_builder<Name const, Quantity const>()
                                 .with(world.component<InInventory>(), player)
                                 .build();
 
@@ -315,12 +315,12 @@ static void drop_window_proc(UI::WindowContext* context, void*)
     }
 
     UI::Panel& ui = context->windowPanel;
-    player_inventory.each([&ui](flecs::iter& it, size_t index, Name const& name, Quantity const* quantity) {
+    player_inventory.each([&ui](flecs::iter& it, size_t index, Name const& name, Quantity const quantity) {
         ui.startNewLine(HAlign::Left);
         if (index == s_selected_item_index) {
             String quantity_string = ""_s;
-            if (quantity && quantity->quantity > 1)
-                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(quantity->quantity) });
+            if (quantity.quantity > 1)
+                quantity_string = myprintf("{}/{} "_s, { formatInt(s_item_quantity), formatInt(quantity.quantity) });
             ui.addLabel(myprintf("> Drop {}{} <"_s, { quantity_string, name.name }), "small-selected"_sv);
         } else {
             ui.addLabel(describe_item(it.entity(index)));
@@ -341,7 +341,7 @@ void show_drop_window()
     auto world = game->world();
     auto player = game->player();
 
-    auto player_inventory = world.query_builder<Name const, Quantity* const>()
+    auto player_inventory = world.query_builder<Name const, Quantity const>()
                                 .with(world.component<InInventory>(), player)
                                 .build();
 
@@ -377,7 +377,7 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
     auto& recipe_catalogue = RecipeCatalogue::the();
     auto& recipes = recipe_catalogue.all_recipes_with_method(recipe_method);
 
-    auto player_inventory = world.query_builder<Item const, Name const, Quantity* const>()
+    auto player_inventory = world.query_builder<Item const, Name const, Quantity const>()
                                 .with(world.component<InInventory>(), player)
                                 .build();
 
@@ -385,13 +385,10 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
         // FIXME: @Speed This can almost certainly be much faster.
         // FIXME: This is currently written to assume each ingredient is in one stack.
         return recipe.ingredients.span().all_are([&player_inventory](RecipeDef::RecipeItem const& ingredient) {
-            return player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const* quantity) {
+            return player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const quantity) {
                 if (item.type != ingredient.item_type)
                     return false;
-
-                if (quantity)
-                    return ingredient.quantity <= quantity->quantity;
-                return ingredient.quantity == 1;
+                return ingredient.quantity <= quantity.quantity;
             });
         });
     };
@@ -407,7 +404,7 @@ static void recipe_selection_window_proc(UI::WindowContext* context, void* recip
             // FIXME: @Speed This can almost certainly be much faster.
             // FIXME: This is currently written to assume each ingredient is in one stack.
             for (auto const& ingredient : recipe.ingredients) {
-                auto inventory_item = player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const*) {
+                auto inventory_item = player_inventory.find([&ingredient](Item const& item, Name const&, Quantity const) {
                     return item.type == ingredient.item_type;
                 });
                 auto inventory_quantity = item_quantity(inventory_item);

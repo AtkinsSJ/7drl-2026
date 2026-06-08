@@ -10,15 +10,13 @@
 
 u32 item_quantity(flecs::entity item)
 {
-    if (auto* quantity = item.try_get<Quantity>())
-        return quantity->quantity;
-    return 1;
+    return item.get<Quantity>().quantity;
 }
 
 String describe_item(flecs::entity item)
 {
     auto& name = item.get<Name>().name;
-    if (auto* quantity = item.try_get<Quantity>())
-        return myprintf("{} x {}"_s, { name, formatInt(quantity->quantity) });
+    if (auto& [quantity] = item.get<Quantity>(); quantity > 1)
+        return myprintf("{} x {}"_s, { name, formatInt(quantity) });
     return name;
 }
