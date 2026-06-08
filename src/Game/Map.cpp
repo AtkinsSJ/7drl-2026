@@ -110,12 +110,8 @@ void Map::generate(flecs::world world, u32 width, u32 height, Random& random, Me
                       .set(HasSprite { .ref = { "player"_sv, 0 } });
 
     // Give the player a few things
-    item_catalogue.instantiate(world, stick)
-        .add<InInventory>(player)
-        .set(Quantity { 11 });
-    item_catalogue.instantiate(world, stone)
-        .add<InInventory>(player)
-        .set(Quantity { 19 });
+    give_item_to_entity(world, stick, 11, player);
+    give_item_to_entity(world, stone, 19, player);
 
     // Initialize all sprites
     for (auto y = 0; y < height; ++y) {

@@ -178,8 +178,8 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
         auto source_item_quantity = item_quantity(items_here[s_selected_item_index]);
         if (s_item_quantity == source_item_quantity) {
             auto item = items_here.take_index(s_selected_item_index);
-            item.remove<Position>().add<InInventory>(player);
             UI::Toast::show(getText("msg_picked_up_item"_s, { describe_item(item) }));
+            give_item_to_entity(world, item, player);
         }
         // Otherwise, create a new item of the type and quantity, and give that.
         else {
@@ -190,6 +190,7 @@ static void pick_up_window_proc(UI::WindowContext* context, void*)
                                 .remove<Position>()
                                 .add<InInventory>(player);
             UI::Toast::show(getText("msg_picked_up_item"_s, { describe_item(new_item) }));
+            give_item_to_entity(world, new_item, player);
         }
 
         // FIXME: Need to trigger a turn!!!
@@ -516,11 +517,8 @@ static void knapping_window_proc(UI::WindowContext* context, void* recipe_id_as_
         player_inventory.find([in_progress_item_type](Item const& item) { return item.type == in_progress_item_type; })
             .destruct();
 
-        for (auto const& output : outputs) {
-            item_catalogue.instantiate(world, output.item_type)
-                .set(Quantity { output.quantity })
-                .template add<InInventory>(player);
-        }
+        for (auto const& output : outputs)
+            give_item_to_entity(world, output.item_type, output.quantity, player);
     };
 
     // If we now match the target pattern, complete the craft

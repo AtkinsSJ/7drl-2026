@@ -60,9 +60,7 @@ ConsoleCommand(give)
 
     auto& item_catalogue = ItemCatalogue::the();
     if (auto item_type = item_catalogue.find_name(item_name.deprecated_to_string()); item_type.has_value()) {
-        item_catalogue.instantiate(world, item_type.value())
-            .add<InInventory>(player)
-            .set(Quantity { quantity });
+        give_item_to_entity(world, item_type.value(), quantity, player);
         consoleWriteLine(myprintf("Giving player {} {}"_s, { formatInt(quantity), item_name }), ConsoleLineStyle::Success);
     } else {
         consoleWriteLine(myprintf("No known item named '{}'"_s, { item_name }), ConsoleLineStyle::Error);
