@@ -102,13 +102,7 @@ void Map::generate(flecs::world world, u32 width, u32 height, Random& random, Me
     }
 
     // Pop a player somewhere
-    auto player = world.entity("Player")
-                      .set(Position { .x = static_cast<s32>(width / 2), .y = static_cast<s32>(height * 0.8f) })
-                      .add<Player>()
-                      .add<HasInventory>()
-                      .set<Name>({ "player"_s })
-                      .set(HasSprite { .ref = { "player"_sv, 0 } })
-                      .set(DrawLayer::Player);
+    auto player = create_player(world, static_cast<s32>(width / 2), static_cast<s32>(height * 0.8f));
 
     // Give the player a few things
     give_item_to_entity(world, stick, 11, player);

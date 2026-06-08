@@ -6,10 +6,22 @@
 
 #include "Player.h"
 #include <Game/Components.h>
+#include <Game/Item.h>
 #include <Game/Map.h>
 #include <Input/Input.h>
 
-bool try_move_player(flecs::world world, flecs::entity player, Direction direction)
+flecs::entity create_player(flecs::world& world, s32 x, s32 y)
+{
+    return world.entity("Player")
+        .set(Position { .x = x, .y = y })
+        .add<Player>()
+        .add<HasInventory>()
+        .set<Name>({ "player"_s })
+        .set(HasSprite { .ref = { "player"_sv, 0 } })
+        .set(DrawLayer::Player);
+}
+
+bool try_move_player(flecs::world& world, flecs::entity player, Direction direction)
 {
     auto& map = world.get<Map>();
     auto& position = player.get<Position>();
