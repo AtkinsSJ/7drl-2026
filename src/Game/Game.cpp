@@ -8,7 +8,6 @@
 #include "AppState.h"
 #include <Debug/Debug.h>
 #include <Game/Components.h>
-#include <Game/GUI.h>
 #include <Game/Item.h>
 #include <Game/ItemCatalogue.h>
 #include <Game/Map.h>
@@ -36,71 +35,10 @@ Game::Game(u32 width, u32 height)
 
     the_renderer().world_camera().set_zoom(2);
 
-    m_simulation_phase = m_world.entity().add(flecs::Phase).depends_on(flecs::OnUpdate);
+    m_simulation_phase = m_world.entity("SimulationPhase").add(flecs::Phase).depends_on(flecs::OnUpdate);
     auto post_simulation_phase = m_world.entity().add(flecs::Phase).depends_on(m_simulation_phase);
 
-    // Take player input
-    m_world.system("PlayerInput")
-        .with<Player>()
-        .kind(flecs::PreUpdate)
-        .immediate()
-        .each([&](flecs::entity player) {
-            m_simulation_phase.disable();
-
-            bool has_acted = false;
-
-            // Opening windows is always allowed. Other keybinds are inactive while an input-consuming window is open.
-            // eg, the "pick up items" window, which has keys for selecting the item, which collide with movement keys.
-            if (keyJustPressed(SDLK_i)) {
-                GUI::toggle_inventory();
-            } else if (keyJustPressed(SDLK_h)) {
-                GUI::toggle_help();
-            } else if (GUI::any_input_consuming_windows_are_open()) {
-                return;
-            }
-
-            if (keyJustPressed(SDLK_m)) {
-                GUI::toggle_pause_menu();
-            } else if (keyJustPressed(SDLK_p)) {
-                GUI::show_pick_up_window();
-            } else if (keyJustPressed(SDLK_d)) {
-                GUI::show_drop_window();
-            } else if (keyJustPressed(SDLK_k)) {
-                // If we already have an in-progress knapping item, continue that instead of listing options.
-                auto& recipe_catalogue = RecipeCatalogue::the();
-                auto active_crafts = m_world.query_builder<ActiveCraftingRecipe const>()
-                                         .with<Item>()
-                                         .with(m_world.component<InInventory>(), player)
-                                         .build();
-                auto in_progress_knapping = active_crafts.find([&recipe_catalogue](ActiveCraftingRecipe const& active_crafting_recipe) {
-                    return recipe_catalogue.find(active_crafting_recipe.id).method == RecipeMethod::Knapping;
-                });
-                if (in_progress_knapping.is_valid()) {
-                    GUI::show_knapping_window(in_progress_knapping.get<ActiveCraftingRecipe>().id, false);
-                } else {
-                    GUI::show_recipe_selection_window(RecipeMethod::Knapping);
-                }
-            } else if (keyJustPressed(SDLK_KP_1)) {
-                has_acted = try_move_player(m_world, player, Direction::SW);
-            } else if (keyJustPressed(SDLK_KP_2)) {
-                has_acted = try_move_player(m_world, player, Direction::S);
-            } else if (keyJustPressed(SDLK_KP_3)) {
-                has_acted = try_move_player(m_world, player, Direction::SE);
-            } else if (keyJustPressed(SDLK_KP_4)) {
-                has_acted = try_move_player(m_world, player, Direction::W);
-            } else if (keyJustPressed(SDLK_KP_6)) {
-                has_acted = try_move_player(m_world, player, Direction::E);
-            } else if (keyJustPressed(SDLK_KP_7)) {
-                has_acted = try_move_player(m_world, player, Direction::NW);
-            } else if (keyJustPressed(SDLK_KP_8)) {
-                has_acted = try_move_player(m_world, player, Direction::N);
-            } else if (keyJustPressed(SDLK_KP_9)) {
-                has_acted = try_move_player(m_world, player, Direction::NE);
-            }
-
-            if (has_acted)
-                m_simulation_phase.enable();
-        });
+    m_world.import<mod_player>();
 
     // Take a turn
     m_world.system()

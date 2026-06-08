@@ -13,4 +13,9 @@ struct Player { };
 
 flecs::entity create_player(flecs::world&, s32 x, s32 y);
 
+void handle_player_input(flecs::world& world, flecs::entity player);
 bool try_move_player(flecs::world&, flecs::entity player, Direction);
+
+struct mod_player {
+    explicit mod_player(flecs::world&);
+};
