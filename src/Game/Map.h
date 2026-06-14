@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <Game/Direction.h>
 #include <Game/Tile.h>
 #include <Util/Array2.h>
 #include <flecs.h>
@@ -29,4 +28,8 @@ public:
 
 private:
     Array2<Tile> m_tiles;
+};
+
+struct mod_map {
+    explicit mod_map(flecs::world&);
 };

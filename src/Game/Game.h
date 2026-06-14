@@ -27,4 +27,5 @@ private:
     flecs::world m_world;
 
     flecs::entity m_simulation_phase;
+    flecs::entity m_post_simulation_phase;
 };

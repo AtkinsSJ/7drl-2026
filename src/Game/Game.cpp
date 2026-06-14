@@ -27,47 +27,23 @@ Game::Game(u32 width, u32 height)
     : m_arena("Game"_s)
 {
     auto random = adopt_own(*Random::create());
-    m_world.component<Map>().add(flecs::Singleton);
-    Map::generate(m_world, width, height, *random, m_arena);
 
-    m_world.component<TileItemsCache>().add(flecs::Singleton);
+    m_simulation_phase = m_world.entity("SimulationPhase").add(flecs::Phase).depends_on(flecs::OnUpdate);
+    m_post_simulation_phase = m_world.entity("PostSimulationPhase").add(flecs::Phase).depends_on(m_simulation_phase);
+
+    m_world.import<mod_map>();
+    m_world.import<mod_player>();
+
+    Map::generate(m_world, width, height, *random, m_arena);
     m_world.emplace<TileItemsCache>(m_arena, width, height);
 
     the_renderer().world_camera().set_zoom(2);
-
-    m_simulation_phase = m_world.entity("SimulationPhase").add(flecs::Phase).depends_on(flecs::OnUpdate);
-    auto post_simulation_phase = m_world.entity().add(flecs::Phase).depends_on(m_simulation_phase);
-
-    m_world.import<mod_player>();
 
     // Take a turn
     m_world.system()
         .kind(m_simulation_phase)
         .run([](flecs::iter& it) {
             logInfo("Taking a turn"_s);
-        });
-
-    m_world.system<Position const>()
-        .kind(post_simulation_phase)
-        .with<Item const>()
-        .run([](flecs::iter& it) {
-            logInfo("TileItemsCache"_s);
-            auto& tile_items = it.world().get_mut<TileItemsCache>();
-
-            // Clear all tile item caches
-            tile_items.clear();
-
-            // Create new caches
-            while (it.next()) {
-                auto position = it.field<Position const>(0);
-                for (auto i : it) {
-                    auto entity = it.entity(i);
-                    tile_items.add(position[i].x, position[i].y, entity);
-                }
-            }
-
-            // Sort and compact items
-            tile_items.sort_and_compact(it.world());
         });
 
     // Centre the camera on the player
@@ -81,11 +57,6 @@ Game::Game(u32 width, u32 height)
         });
 
     // Draw
-    m_world.system<Map>("Draw Map")
-        .kind(flecs::OnStore)
-        .each([](flecs::iter& it, size_t, Map const& map) {
-            map.render(it.delta_time());
-        });
     m_world.system<Position const, HasSprite const>("Draw Entities")
         .kind(flecs::OnStore)
         .with<DrawLayer const>()

@@ -117,3 +117,46 @@ void Map::generate(flecs::world world, u32 width, u32 height, Random& random, Me
 
     world.set<Map>(move(map));
 }
+
+mod_map::mod_map(flecs::world& world)
+{
+    world.component<Map>().add(flecs::Singleton);
+
+    world.component<TileItemsCache>().add(flecs::Singleton);
+
+    world.system()
+        .kind(flecs::OnStart)
+        .run([](flecs::iter& it) {
+            // Might be good to construct things here... but how? We don't know the map size.
+            // ...unless we stick the map size in somehow before this runs.
+        });
+
+    auto post_simulation = world.lookup("PostSimulationPhase");
+    world.system<Position const>()
+        .kind(post_simulation)
+        .with<Item const>()
+        .run([](flecs::iter& it) {
+            auto& tile_items = it.world().get_mut<TileItemsCache>();
+
+            // Clear all tile item caches
+            tile_items.clear();
+
+            // Create new caches
+            while (it.next()) {
+                auto position = it.field<Position const>(0);
+                for (auto i : it) {
+                    auto entity = it.entity(i);
+                    tile_items.add(position[i].x, position[i].y, entity);
+                }
+            }
+
+            // Sort and compact items
+            tile_items.sort_and_compact(it.world());
+        });
+
+    world.system<Map>("Draw Map")
+        .kind(flecs::OnStore)
+        .each([](flecs::iter& it, size_t, Map const& map) {
+            map.render(it.delta_time());
+        });
+}
