@@ -21,6 +21,7 @@ struct HasSprite {
 };
 
 enum class DrawLayer : u8 {
+    Plant,
     Item,
     Player,
 };
@@ -28,3 +29,5 @@ enum class DrawLayer : u8 {
 struct Name {
     String name;
 };
+
+struct BlocksMovement { };

@@ -18,6 +18,7 @@ flecs::entity create_player(flecs::world& world, s32 x, s32 y)
         .set(Position { .x = x, .y = y })
         .add<Player>()
         .add<HasInventory>()
+        .add<BlocksMovement>()
         .set<Name>({ "player"_s })
         .set(HasSprite { .ref = { "player"_sv, 0 } })
         .set(DrawLayer::Player);
@@ -32,17 +33,17 @@ bool try_move_player(flecs::world& world, flecs::entity player, Direction direct
         if (new_x < 0 || new_x >= map.width() || new_y < 0 || new_y >= map.height())
             return false;
 
-        // FIXME: Reimplement cache for entities on a tile
-        // auto& old_tile = map.tile_at(position.x, position.y);
-        // auto& new_tile = map.tile_at(new_x, new_y);
-        //
-        // // TODO: Checks if we can actually move into the tile
-        // if (new_tile.actor())
-        //    return false;
-        //
-        // // Move!
-        // old_tile.set_actor(nullptr);
-        // new_tile.set_actor(this);
+        // TODO: Cache query!
+        auto query = world.query_builder<Position const>()
+                         .with<BlocksMovement>()
+                         .build();
+        auto entity_in_the_way = query.find([new_x, new_y](auto const& position) {
+            return position.x == new_x && position.y == new_y;
+        });
+        if (entity_in_the_way) {
+            logDebug("There is something in the way!"_s);
+            return false;
+        }
         player.set<Position>({ new_x, new_y });
         return true;
     };

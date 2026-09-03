@@ -101,6 +101,23 @@ void Map::generate(flecs::world world, u32 width, u32 height, Random& random, Me
             .set(Position { .x = x, .y = y });
     }
 
+    // Generate some trees
+    // FIXME: Define this properly!
+    auto make_tree = [&](Position position) {
+        return world.entity()
+            .add<BlocksMovement>()
+            .set<Name>({ "tree"_s })
+            .set(move(position))
+            .set<HasSprite>({ .ref = { "tree"_sv, 0 } })
+            .set(DrawLayer::Plant);
+    };
+    auto tree_count = random.random_between(width * height / 100, width * height / 50);
+    for (auto i = 0; i < tree_count; ++i) {
+        auto x = random.random_below(width);
+        auto y = random.random_below(height);
+        make_tree({ x, y });
+    }
+
     // Pop a player somewhere
     auto player = create_player(world, static_cast<s32>(width / 2), static_cast<s32>(height * 0.8f));
 
