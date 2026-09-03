@@ -32,11 +32,17 @@ bool try_move_player(flecs::world& world, flecs::entity player, Direction direct
     auto try_move_to = [&](s32 new_x, s32 new_y) {
         if (new_x < 0 || new_x >= map.width() || new_y < 0 || new_y >= map.height())
             return false;
-
-        // TODO: Cache query!
-        auto query = world.query_builder<Position const>()
-                         .with<BlocksMovement>()
-                         .build();
+        flecs::query<Position const> query;
+        if (auto existing_query = world.lookup("query_blocks_movement")) {
+            logDebug("We have the query already!"_s);
+            query = flecs::query<Position const>(world.query(existing_query));
+        } else {
+            logDebug("Creating the query!"_s);
+            query = world.query_builder<Position const>("query_blocks_movement")
+                        .with<BlocksMovement>()
+                        .cached()
+                        .build();
+        }
         auto entity_in_the_way = query.find([new_x, new_y](auto const& position) {
             return position.x == new_x && position.y == new_y;
         });
